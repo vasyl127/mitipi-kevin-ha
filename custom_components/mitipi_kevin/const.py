@@ -3,7 +3,7 @@
 from datetime import timedelta
 
 DOMAIN = "mitipi_kevin"
-INTEGRATION_VERSION = "0.3.0"
+INTEGRATION_VERSION = "0.3.1"
 
 # Single approved Kevin API host; not user-configurable.
 KEVIN_API_BASE_URL = "https://mitipi.marmash.dev/api"
