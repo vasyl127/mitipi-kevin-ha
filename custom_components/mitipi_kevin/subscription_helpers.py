@@ -39,6 +39,17 @@ def _is_billing_key(key: str) -> bool:
     return any(fragment in lowered for fragment in _BILLING_KEY_FRAGMENTS)
 
 
+_DEGRADED_SOURCES = frozenset(
+    {
+        "no_subscription",
+        "not_configured",
+        "subscription_read_forbidden",
+        "read_forbidden",
+        "read_error",
+    }
+)
+
+
 def parse_account_subscription(status: int, data: Any) -> dict[str, Any]:
     """Map HTTP status and JSON body to a normalized subscription dict."""
     if status == 401:
@@ -46,19 +57,40 @@ def parse_account_subscription(status: int, data: Any) -> dict[str, Any]:
     if status == 403:
         if isinstance(data, dict) and _error_code(data) == "subscription_read_forbidden":
             return {"status": "forbidden", "source": "subscription_read_forbidden"}
-        raise KevinApiError
+        return {"status": "forbidden", "source": "read_forbidden"}
     if status >= 500:
         raise KevinConnectionError
     if status >= 400:
-        raise KevinApiError
+        return {"status": "unknown", "source": "read_error"}
     if not isinstance(data, dict):
         raise KevinApiError
 
     if isinstance(data.get("subscription"), dict):
-        return dict(data["subscription"])
+        sub = dict(data["subscription"])
+        return _normalize_degraded_subscription(sub)
+
     if data.get("status") is not None:
-        return {key: value for key, value in data.items() if not _is_billing_key(key)}
+        normalized = {
+            key: value for key, value in data.items() if not _is_billing_key(key)
+        }
+        return _normalize_degraded_subscription(normalized)
     raise KevinApiError
+
+
+def _normalize_degraded_subscription(subscription: dict[str, Any]) -> dict[str, Any]:
+    """Ensure known degraded sources map to steady sensor states."""
+    source = subscription.get("source")
+    if source not in _DEGRADED_SOURCES:
+        return subscription
+    if source == "no_subscription":
+        return {**subscription, "status": "none"}
+    if source == "not_configured":
+        return {**subscription, "status": "unknown"}
+    if source in ("subscription_read_forbidden", "read_forbidden"):
+        return {**subscription, "status": "forbidden"}
+    if source == "read_error":
+        return {**subscription, "status": "unknown"}
+    return subscription
 
 
 def _error_code(data: dict[str, Any]) -> str | None:

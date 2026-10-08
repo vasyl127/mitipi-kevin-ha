@@ -88,6 +88,68 @@ async def test_zero_devices_succeeds_without_entities(
     assert_allowed_kevin_paths(kevin_stub.requested_paths)
 
 
+async def test_summary_403_fallback_keeps_device_entities_available(
+    hass: HomeAssistant, kevin_stub: KevinApiStub
+) -> None:
+    """When /summary returns 403, device entities use /state and /scenes; subscription degrades."""
+    kevin_stub.set_devices([DEVICE_ONE])
+    kevin_stub.summary_status_by_device[DEVICE_ONE["id"]] = 403
+    kevin_stub.account_subscription_status = 403
+    kevin_stub.device_states[DEVICE_ONE["id"]] = {
+        "availability": "online",
+        "reported": {"mode": "ON"},
+        "firmwareVersion": "2.04",
+    }
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_EMAIL: TEST_EMAIL,
+            CONF_PASSWORD: TEST_PASSWORD,
+        },
+    )
+    entry.add_to_hass(hass)
+    with aioresponses() as mock:
+        kevin_stub.apply(mock)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    registry = er.async_get(hass)
+    device_id = DEVICE_ONE["id"]
+    power = hass.states.get(
+        registry.async_get_entity_id("switch", DOMAIN, f"{device_id}_power")
+    )
+    mode = hass.states.get(
+        registry.async_get_entity_id("sensor", DOMAIN, f"{device_id}_mode")
+    )
+    connectivity = hass.states.get(
+        registry.async_get_entity_id("binary_sensor", DOMAIN, f"{device_id}_connectivity")
+    )
+    firmware = hass.states.get(
+        registry.async_get_entity_id("sensor", DOMAIN, f"{device_id}_firmware")
+    )
+    scene = hass.states.get(
+        registry.async_get_entity_id("select", DOMAIN, f"{device_id}_scene")
+    )
+    sub_entry = next(
+        e
+        for e in er.async_entries_for_config_entry(registry, entry.entry_id)
+        if e.unique_id.endswith("_account_subscription")
+    )
+    sub = hass.states.get(sub_entry.entity_id)
+
+    assert power.state == "on"
+    assert mode.state == "ON"
+    assert connectivity.state == "on"
+    assert firmware.state == "2.04"
+    assert scene.state != "unavailable"
+    assert sub.state == "forbidden"
+    assert sub.attributes.get("source") == "subscription_read_forbidden"
+
+    paths = kevin_stub.requested_paths
+    assert any(p.endswith("/state") for p in paths)
+    assert any(p.endswith("/scenes") for p in paths)
+
+
 async def test_state_mapping_online_mode_and_unknown_unavailable(
     hass: HomeAssistant, kevin_stub: KevinApiStub
 ) -> None:
