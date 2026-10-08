@@ -33,7 +33,7 @@ def device_api_id(device: dict[str, Any]) -> str:
 
 
 class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot]]):
-    """Poll devices, summary, and scenes."""
+    """Poll account subscription, devices, summary, and scenes."""
 
     config_entry: ConfigEntry
 
@@ -51,6 +51,15 @@ class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot
         )
         self.client = client
         self.config_entry = entry
+        self.account_subscription: dict[str, Any] = {}
+
+    async def _fetch_account_subscription(self) -> None:
+        try:
+            self.account_subscription = await self.client.get_account_subscription()
+        except KevinAuthError:
+            raise
+        except KevinConnectionError as err:
+            raise UpdateFailed("Kevin API unavailable") from err
 
     async def _fetch_device_details(
         self,
@@ -77,6 +86,7 @@ class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot
     async def _async_update_data(self) -> dict[str, KevinDeviceSnapshot]:
         try:
             await self.client.ensure_authenticated()
+            await self._fetch_account_subscription()
             devices = await self.client.get_devices()
         except KevinAuthError as err:
             raise ConfigEntryAuthFailed from err

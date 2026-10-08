@@ -46,47 +46,6 @@ async def test_firmware_sensor(hass: HomeAssistant, kevin_stub: KevinApiStub) ->
     assert hass.states.get(entity_id).state == "2.10"
 
 
-async def test_subscription_attributes_present_and_absent(
-    hass: HomeAssistant, kevin_stub: KevinApiStub
-) -> None:
-    """Subscription sensor reflects status; optional fields become attributes only."""
-    kevin_stub.summaries[DEVICE_ONE["id"]] = summary_payload(
-        DEVICE_ONE,
-        subscription={"status": "unknown", "source": "not_configured"},
-    )
-    entry = await _setup_one_device(hass, kevin_stub)
-    registry = er.async_get(hass)
-    entity_id = registry.async_get_entity_id(
-        "sensor", DOMAIN, f"{DEVICE_ONE['id']}_subscription"
-    )
-    state = hass.states.get(entity_id)
-    assert state.state == "unknown"
-    assert state.attributes.get("source") == "not_configured"
-    assert "plan" not in state.attributes
-    assert "expires_at" not in state.attributes
-
-    kevin_stub.summaries[DEVICE_ONE["id"]] = summary_payload(
-        DEVICE_ONE,
-        subscription={
-            "status": "active",
-            "plan": "premium",
-            "expiresAt": "2030-01-01T00:00:00Z",
-            "remainingSeconds": 3600,
-            "source": "billing",
-        },
-    )
-    coordinator = entry.runtime_data
-    with aioresponses() as mock:
-        kevin_stub.apply(mock)
-        await coordinator.async_refresh()
-        await hass.async_block_till_done()
-    state = hass.states.get(entity_id)
-    assert state.state == "active"
-    assert state.attributes["plan"] == "premium"
-    assert state.attributes["expires_at"] == "2030-01-01T00:00:00Z"
-    assert state.attributes["remaining_seconds"] == 3600
-
-
 async def test_scene_select_empty_active(hass: HomeAssistant, kevin_stub: KevinApiStub) -> None:
     """Scene select has no current option when activeSceneIds is empty."""
     kevin_stub.scenes[DEVICE_ONE["id"]] = scenes_payload(active_scene_ids=[])

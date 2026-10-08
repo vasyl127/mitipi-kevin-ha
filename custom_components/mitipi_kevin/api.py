@@ -22,6 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 _IDEMPOTENCY_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 _ALLOWED_PATH_PATTERNS = (
     re.compile(r"^/v1/auth/login$"),
+    re.compile(r"^/v1/subscription$"),
     re.compile(r"^/v1/devices$"),
     re.compile(r"^/v1/devices/[^/]+/state$"),
     re.compile(r"^/v1/devices/[^/]+/capabilities$"),
@@ -45,6 +46,10 @@ class KevinAuthError(KevinApiError):
 
 class KevinConnectionError(KevinApiError):
     """API unreachable or server error."""
+
+
+class KevinSubscriptionReadForbidden(KevinApiError):
+    """Account subscription read is forbidden (403 subscription_read_forbidden)."""
 
 
 class KevinApiClient:
@@ -262,8 +267,18 @@ class KevinApiClient:
         return await self._get_device_json(f"/v1/devices/{device_id}/scenes")
 
     async def get_device_subscription(self, device_id: str) -> dict[str, Any]:
-        """Fetch subscription details."""
-        return await self._get_device_json(f"/v1/devices/{device_id}/subscription")
+        """Fetch subscription details (same account payload as /v1/subscription)."""
+        status, data = await self._request("GET", f"/v1/devices/{device_id}/subscription")
+        from .subscription_helpers import parse_account_subscription
+
+        return parse_account_subscription(status, data)
+
+    async def get_account_subscription(self) -> dict[str, Any]:
+        """Fetch the authenticated user's account-level subscription."""
+        status, data = await self._request("GET", "/v1/subscription")
+        from .subscription_helpers import parse_account_subscription
+
+        return parse_account_subscription(status, data)
 
     async def set_mode(self, device_id: str, mode: str, idempotency_key: str) -> None:
         """Request desired mode (202 = accepted, not physical confirmation)."""
