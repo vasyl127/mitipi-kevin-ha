@@ -135,11 +135,21 @@ function formatCoarseRemaining(seconds) {
 function formatSubscriptionDisplay(hass, state, attrs) {
   const status = state || "";
   const source = attrs?.source || "";
-  if (status === "forbidden" || source === "subscription_read_forbidden") {
+  if (
+    status === "forbidden" ||
+    source === "subscription_read_forbidden" ||
+    source === "read_forbidden"
+  ) {
     return {
       headline: "Subscription data not accessible yet",
       detail:
         "Kevin could not read subscription data (permissions limitation). This is not an authentication problem.",
+    };
+  }
+  if (source === "read_error") {
+    return {
+      headline: "Subscription data temporarily unavailable",
+      detail: "Kevin could not load subscription details right now. Device control is unaffected.",
     };
   }
   if (status === "none" || source === "no_subscription") {
@@ -197,7 +207,7 @@ class KevinPresenceCard extends HTMLElement {
   }
 
   static get version() {
-    return "0.3.1";
+    return "0.3.2";
   }
 
   setConfig(config) {
@@ -982,13 +992,24 @@ class KevinPresenceCardEditor extends HTMLElement {
   }
 }
 
-customElements.define(CARD_TYPE, KevinPresenceCard);
-customElements.define("kevin-presence-card-editor", KevinPresenceCardEditor);
+const EDITOR_TYPE = "kevin-presence-card-editor";
 
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: CARD_TYPE,
-  name: "Kevin Presence",
-  preview: true,
-  description: "Mitipi Kevin device card with confirmed power control and scenes.",
-});
+if (!customElements.get(CARD_TYPE)) {
+  customElements.define(CARD_TYPE, KevinPresenceCard);
+}
+if (!customElements.get(EDITOR_TYPE)) {
+  customElements.define(EDITOR_TYPE, KevinPresenceCardEditor);
+}
+
+const lovelaceGlobal = globalThis;
+lovelaceGlobal.customCards = lovelaceGlobal.customCards || [];
+if (!lovelaceGlobal.customCards.some((entry) => entry.type === CARD_TYPE)) {
+  lovelaceGlobal.customCards.push({
+    type: CARD_TYPE,
+    name: "Kevin Presence",
+    preview: true,
+    description: "Mitipi Kevin device card with confirmed power control and scenes.",
+  });
+}
+
+export {};

@@ -25,14 +25,14 @@ Each Kevin device exposes entities with stable `unique_id` = `{apiDeviceId}_{rol
 | Platform | Role | Behavior |
 | -------- | ---- | -------- |
 | `sensor` | `mode` | Reported mode (`ON` / `STAND_BY`); unavailable when offline/unknown |
-| `sensor` | `firmware` | Firmware version string from `/summary` |
+| `sensor` | `firmware` | Firmware version from `/summary`, or from `/state` / `/capabilities` when summary is unavailable |
 | `sensor` | `account_subscription` | **One per Home Assistant config entry (account)**, not per device. State is subscription `status` (`trialing`, `active`, `canceled`, …, or steady states `none`, `unknown`, `forbidden`). Attributes include `plan_code`, `tier`, `interval`, `currency`, `amount_minor`, period dates, `remaining_seconds`, `is_trial`, `cancel_at_period_end`, `source`, plus `features` and `limits` maps when present. |
 | `binary_sensor` | `connectivity` | `online` → on, `offline` → off, `unknown` → unavailable |
 | `switch` | `power` | `turn_on` / `turn_off` → `set-mode` with idempotency key; refresh after `202`, no optimistic state |
 | `select` | `scene` | Scene titles as options; empty `activeSceneIds` → no selection; `select_option` → `apply-scene` only |
 | `button` | `reboot` | `press` → reboot action with idempotency key |
 
-The coordinator polls `GET /v1/devices/{id}/summary` and `GET /v1/devices/{id}/scenes` per device (bounded concurrency). Dynamic discovery adds entities when new devices appear.
+The coordinator polls `GET /v1/subscription` once per account, then per device prefers `GET /v1/devices/{id}/summary` plus `GET /v1/devices/{id}/scenes`. If `/summary` fails (for example HTTP 403 while billing read permissions are missing on the deployed API), it falls back to `GET /v1/devices/{id}/state` and `GET /v1/devices/{id}/capabilities` so Power, Mode, Connectivity, Firmware, and Scene keep working. After a summary failure the integration avoids hammering `/summary` on every poll and retries occasionally. Subscription errors never mark device entities unavailable. Dynamic discovery adds entities when new devices appear.
 
 ### Account subscription
 
@@ -44,13 +44,14 @@ Non-error steady states:
 | ----- | ------- |
 | `none` / `no_subscription` | No subscription record for the account. |
 | `unknown` / `not_configured` | Billing integration disabled in Kevin API configuration. |
-| `forbidden` / `subscription_read_forbidden` | Read denied (HTTP 403). The entity stays **available** with an explanatory state; this is **not** an auth failure and does not trigger reauth. |
+| `forbidden` / `subscription_read_forbidden` / `read_forbidden` | Read denied or not permitted. The entity stays **available** with an explanatory state; this is **not** an auth failure and does not trigger reauth. |
+| `unknown` / `read_error` | Transient or upstream read failure; device entities remain available. |
 
 **Live limitation:** the federated AWS role used by Kevin API may not yet have DynamoDB read access for subscriptions. When that happens you will see the `forbidden` state until infrastructure permissions are granted—the integration surfaces this honestly and does not fabricate plan or expiry data.
 
 ## Kevin Presence Lovelace card (bundled)
 
-Version **0.3.0** ships `kevin-presence-card.js` (URL includes the integration version for cache busting). After the integration loads, Home Assistant registers the script automatically—**no manual Lovelace resource entry** is required.
+Version **0.3.2** ships `kevin-presence-card.js` (URL includes the integration version for cache busting). After the integration loads, Home Assistant registers the script automatically—**no manual Lovelace resource entry** is required.
 
 Add a card in the UI or YAML (use your power switch entity id):
 

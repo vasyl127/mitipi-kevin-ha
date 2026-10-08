@@ -48,5 +48,9 @@ jobs:
           python -m json.tool custom_components/mitipi_kevin/manifest.json > /dev/null
           python -m json.tool custom_components/mitipi_kevin/translations/en.json > /dev/null
           python -m json.tool hacs.json > /dev/null
+      - name: Kevin Presence card syntax
+        run: node --check custom_components/mitipi_kevin/www/kevin-presence-card.js
+      - name: Kevin Presence card registration smoke
+        run: node tests/js/card_registration_smoke.mjs
       - name: Pytest
         run: pytest -q

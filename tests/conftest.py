@@ -147,6 +147,10 @@ class KevinApiStub:
             "source": "not_configured",
         }
         self.account_subscription_status = 200
+        self.summary_status_by_device: dict[str, int] = {}
+        self.default_summary_status = 200
+        self.device_states: dict[str, dict[str, Any]] = {}
+        self.device_capabilities: dict[str, dict[str, Any]] = {}
 
     def set_devices(self, devices: list[dict[str, Any]]) -> None:
         self.devices = devices
@@ -157,6 +161,15 @@ class KevinApiStub:
                 summary_payload(device),
             )
             self.scenes.setdefault(device_id, scenes_payload())
+            self.device_states.setdefault(
+                device_id,
+                {
+                    "availability": "online",
+                    "reported": {"mode": "ON"},
+                    "firmwareVersion": "1.88",
+                },
+            )
+            self.device_capabilities.setdefault(device_id, {})
 
     def enable_single_devices_401_retry(self) -> None:
         """First authenticated devices list returns 401 (exercises re-login)."""
@@ -219,6 +232,14 @@ class KevinApiStub:
         def summary_handler(url: str, **kwargs) -> CallbackResult:
             self._record(url)
             device_id = str(url).rsplit("/", 2)[-2]
+            status = self.summary_status_by_device.get(
+                device_id, self.default_summary_status
+            )
+            if status != 200:
+                return CallbackResult(
+                    status=status,
+                    payload={"code": "subscription_read_forbidden"},
+                )
             return CallbackResult(
                 status=200,
                 payload=self.summaries.get(
@@ -244,6 +265,39 @@ class KevinApiStub:
         mock.get(
             re.compile(rf"{re.escape(self.base_url)}/v1/devices/[^/]+/scenes"),
             callback=scenes_handler,
+            repeat=True,
+        )
+
+        def state_handler(url: str, **kwargs) -> CallbackResult:
+            self._record(url)
+            device_id = str(url).rsplit("/", 2)[-2]
+            return CallbackResult(
+                status=200,
+                payload=self.device_states.get(
+                    device_id,
+                    {"availability": "online", "reported": {"mode": "ON"}},
+                ),
+            )
+
+        mock.get(
+            re.compile(rf"{re.escape(self.base_url)}/v1/devices/[^/]+/state"),
+            callback=state_handler,
+            repeat=True,
+        )
+
+        def capabilities_handler(url: str, **kwargs) -> CallbackResult:
+            self._record(url)
+            device_id = str(url).rsplit("/", 2)[-2]
+            return CallbackResult(
+                status=200,
+                payload=self.device_capabilities.get(device_id, {}),
+            )
+
+        mock.get(
+            re.compile(
+                rf"{re.escape(self.base_url)}/v1/devices/[^/]+/capabilities"
+            ),
+            callback=capabilities_handler,
             repeat=True,
         )
 

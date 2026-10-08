@@ -69,6 +69,17 @@ def test_parse_forbidden_distinct_from_401() -> None:
         parse_account_subscription(401, {})
 
 
+def test_parse_degraded_api_sources_read_forbidden_and_read_error() -> None:
+    """Fixed API may return steady degraded subscription sources in 200 responses."""
+    forbidden = parse_account_subscription(
+        200, {"status": "unknown", "source": "read_forbidden"}
+    )
+    assert forbidden["status"] == "forbidden"
+    assert forbidden["source"] == "read_forbidden"
+    error = parse_account_subscription(200, {"status": "unknown", "source": "read_error"})
+    assert error["source"] == "read_error"
+
+
 def test_remaining_seconds_clamped_in_attributes() -> None:
     """Expired subscriptions may report zero remaining seconds from the API."""
     parsed = parse_account_subscription(

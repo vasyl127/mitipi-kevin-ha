@@ -3,7 +3,7 @@
 from datetime import timedelta
 
 DOMAIN = "mitipi_kevin"
-INTEGRATION_VERSION = "0.3.1"
+INTEGRATION_VERSION = "0.3.2"
 
 # Single approved Kevin API host; not user-configurable.
 KEVIN_API_BASE_URL = "https://mitipi.marmash.dev/api"
@@ -19,6 +19,9 @@ HEADER_IDEMPOTENCY = "Idempotency-Key"
 
 UPDATE_INTERVAL = timedelta(seconds=60)
 PARALLEL_UPDATES = 5
+
+# After /summary fails, retry it every N coordinator polls (not every poll).
+SUMMARY_RETRY_INTERVAL_POLLS = 10
 
 MODE_ON = "ON"
 MODE_STAND_BY = "STAND_BY"

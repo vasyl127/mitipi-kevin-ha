@@ -246,8 +246,12 @@ class KevinApiClient:
         )
         self._raise_for_mutation_status(status)
 
+    async def get_json_response(self, path: str) -> tuple[int, Any]:
+        """Authenticated GET returning HTTP status and parsed body."""
+        return await self._request("GET", path)
+
     async def _get_device_json(self, path: str) -> dict[str, Any]:
-        status, data = await self._request("GET", path)
+        status, data = await self.get_json_response(path)
         if status >= 500:
             raise KevinConnectionError
         if status == 401:
