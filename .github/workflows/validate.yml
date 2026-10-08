@@ -3,9 +3,19 @@ name: Validate
 on:
   push:
   pull_request:
+  workflow_dispatch:
+  schedule:
+    # Repository metadata drifts rarely, so a weekly HACS check is enough.
+    - cron: "0 6 * * 1"
 
 jobs:
+  # Repository-level HACS validation. It checks GitHub metadata (description,
+  # topics) that cannot be changed from git, so running it on every push turns a
+  # single outstanding metadata task into a failure notification per commit.
+  # It runs on pull requests, on demand, and weekly instead.
+  # Re-add `push` here once the repository description and topics are set.
   hacs:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
