@@ -97,6 +97,22 @@ async def test_scene_select_empty_active(hass: HomeAssistant, kevin_stub: KevinA
     assert state.state in ("unknown", "unavailable", "")
 
 
+async def test_scene_select_exposes_catalog_attributes(
+    hass: HomeAssistant, kevin_stub: KevinApiStub
+) -> None:
+    """Scene select exposes catalog metadata for the Lovelace card."""
+    kevin_stub.scenes[DEVICE_ONE["id"]] = scenes_payload()
+    await _setup_one_device(hass, kevin_stub)
+    registry = er.async_get(hass)
+    entity_id = registry.async_get_entity_id("select", DOMAIN, f"{DEVICE_ONE['id']}_scene")
+    state = hass.states.get(entity_id)
+    catalog = state.attributes.get("scene_catalog")
+    assert isinstance(catalog, list)
+    assert catalog[0]["title"] == "Cozy evening"
+    assert catalog[0]["environment"] == "HOME"
+    assert state.attributes.get("active_scene_ids") == []
+
+
 async def test_scene_select_apply_scene(hass: HomeAssistant, kevin_stub: KevinApiStub) -> None:
     """Selecting a scene calls apply-scene with idempotency key."""
     kevin_stub.scenes[DEVICE_ONE["id"]] = scenes_payload()
