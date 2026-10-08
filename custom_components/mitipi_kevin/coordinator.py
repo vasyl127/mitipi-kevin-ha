@@ -20,11 +20,11 @@ _LOGGER = logging.getLogger(__name__)
 
 @dataclass(slots=True)
 class KevinDeviceSnapshot:
-    """Registry row plus live state and capabilities."""
+    """Registry row plus summary and scene catalog."""
 
     device: dict[str, Any]
-    state: dict[str, Any] | None
-    capabilities: dict[str, Any] | None
+    summary: dict[str, Any] | None
+    scenes: dict[str, Any] | None
 
 
 def device_api_id(device: dict[str, Any]) -> str:
@@ -33,7 +33,7 @@ def device_api_id(device: dict[str, Any]) -> str:
 
 
 class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot]]):
-    """Poll devices, state, and capabilities."""
+    """Poll devices, summary, and scenes."""
 
     config_entry: ConfigEntry
 
@@ -59,12 +59,12 @@ class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot
     ) -> KevinDeviceSnapshot:
         device_id = device_api_id(device)
         async with semaphore:
-            state: dict[str, Any] | None = None
-            capabilities: dict[str, Any] | None = None
+            summary: dict[str, Any] | None = None
+            scenes: dict[str, Any] | None = None
             try:
-                state, capabilities = await asyncio.gather(
-                    self.client.get_device_state(device_id),
-                    self.client.get_device_capabilities(device_id),
+                summary, scenes = await asyncio.gather(
+                    self.client.get_device_summary(device_id),
+                    self.client.get_device_scenes(device_id),
                 )
             except KevinAuthError:
                 raise
@@ -72,7 +72,7 @@ class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot
                 _LOGGER.debug("Device %s detail fetch failed: %s", device_id, type(err).__name__)
             except Exception:
                 _LOGGER.debug("Device %s detail fetch failed", device_id, exc_info=True)
-        return KevinDeviceSnapshot(device=device, state=state, capabilities=capabilities)
+        return KevinDeviceSnapshot(device=device, summary=summary, scenes=scenes)
 
     async def _async_update_data(self) -> dict[str, KevinDeviceSnapshot]:
         try:

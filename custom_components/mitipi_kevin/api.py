@@ -25,7 +25,13 @@ _ALLOWED_PATH_PATTERNS = (
     re.compile(r"^/v1/devices$"),
     re.compile(r"^/v1/devices/[^/]+/state$"),
     re.compile(r"^/v1/devices/[^/]+/capabilities$"),
+    re.compile(r"^/v1/devices/[^/]+/summary$"),
+    re.compile(r"^/v1/devices/[^/]+/scenes$"),
+    re.compile(r"^/v1/devices/[^/]+/subscription$"),
     re.compile(r"^/v1/devices/[^/]+/actions/set-mode$"),
+    re.compile(r"^/v1/devices/[^/]+/actions/apply-scene$"),
+    re.compile(r"^/v1/devices/[^/]+/actions/clear-scenes$"),
+    re.compile(r"^/v1/devices/[^/]+/actions/reboot$"),
 )
 
 
@@ -198,11 +204,8 @@ class KevinApiClient:
             raise KevinApiError
         return data
 
-    async def set_mode(self, device_id: str, mode: str, idempotency_key: str) -> None:
-        """Request desired mode (202 = accepted, not physical confirmation)."""
-        if mode not in (MODE_ON, MODE_STAND_BY):
-            msg = "Invalid mode"
-            raise KevinApiError(msg)
+    @staticmethod
+    def _validate_idempotency_key(idempotency_key: str) -> None:
         if not idempotency_key or len(idempotency_key) > 128:
             msg = "Invalid idempotency key"
             raise KevinApiError(msg)
@@ -210,14 +213,7 @@ class KevinApiClient:
             msg = "Invalid idempotency key format"
             raise KevinApiError(msg)
 
-        path = f"/v1/devices/{device_id}/actions/set-mode"
-        headers = {HEADER_IDEMPOTENCY: idempotency_key}
-        status, _data = await self._request(
-            "POST",
-            path,
-            json={"mode": mode},
-            extra_headers=headers,
-        )
+    def _raise_for_mutation_status(self, status: int) -> None:
         if status == 202:
             return
         if status >= 500:
@@ -226,6 +222,79 @@ class KevinApiClient:
             raise KevinAuthError
         if status >= 400:
             raise KevinApiError
+
+    async def _post_device_action(
+        self,
+        device_id: str,
+        action: str,
+        body: dict[str, Any],
+        idempotency_key: str,
+    ) -> None:
+        self._validate_idempotency_key(idempotency_key)
+        path = f"/v1/devices/{device_id}/actions/{action}"
+        headers = {HEADER_IDEMPOTENCY: idempotency_key}
+        status, _data = await self._request(
+            "POST",
+            path,
+            json=body,
+            extra_headers=headers,
+        )
+        self._raise_for_mutation_status(status)
+
+    async def _get_device_json(self, path: str) -> dict[str, Any]:
+        status, data = await self._request("GET", path)
+        if status >= 500:
+            raise KevinConnectionError
+        if status == 401:
+            raise KevinAuthError
+        if status >= 400:
+            raise KevinApiError
+        if not isinstance(data, dict):
+            raise KevinApiError
+        return data
+
+    async def get_device_summary(self, device_id: str) -> dict[str, Any]:
+        """Fetch consolidated device card summary."""
+        return await self._get_device_json(f"/v1/devices/{device_id}/summary")
+
+    async def get_device_scenes(self, device_id: str) -> dict[str, Any]:
+        """Fetch scene catalog and active scene ids."""
+        return await self._get_device_json(f"/v1/devices/{device_id}/scenes")
+
+    async def get_device_subscription(self, device_id: str) -> dict[str, Any]:
+        """Fetch subscription details."""
+        return await self._get_device_json(f"/v1/devices/{device_id}/subscription")
+
+    async def set_mode(self, device_id: str, mode: str, idempotency_key: str) -> None:
+        """Request desired mode (202 = accepted, not physical confirmation)."""
+        if mode not in (MODE_ON, MODE_STAND_BY):
+            msg = "Invalid mode"
+            raise KevinApiError(msg)
+        await self._post_device_action(
+            device_id, "set-mode", {"mode": mode}, idempotency_key
+        )
+
+    async def apply_scene(
+        self,
+        device_id: str,
+        scene_id: str,
+        idempotency_key: str,
+        *,
+        score: float | None = None,
+    ) -> None:
+        """Apply a scene without changing power mode."""
+        body: dict[str, Any] = {"sceneId": scene_id}
+        if score is not None:
+            body["score"] = score
+        await self._post_device_action(device_id, "apply-scene", body, idempotency_key)
+
+    async def clear_scenes(self, device_id: str, idempotency_key: str) -> None:
+        """Clear active scenes."""
+        await self._post_device_action(device_id, "clear-scenes", {}, idempotency_key)
+
+    async def reboot_device(self, device_id: str, idempotency_key: str) -> None:
+        """Request device reboot."""
+        await self._post_device_action(device_id, "reboot", {}, idempotency_key)
 
 
 def create_client(

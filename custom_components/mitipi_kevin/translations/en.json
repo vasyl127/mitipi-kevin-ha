@@ -27,5 +27,24 @@
       "already_configured": "This account is already configured.",
       "reauth_successful": "Re-authentication succeeded."
     }
+  },
+  "entity": {
+    "sensor": {
+      "mode": { "name": "Mode" },
+      "firmware": { "name": "Firmware" },
+      "subscription": { "name": "Subscription" }
+    },
+    "binary_sensor": {
+      "connectivity": { "name": "Connectivity" }
+    },
+    "switch": {
+      "power": { "name": "Power" }
+    },
+    "select": {
+      "scene": { "name": "Scene" }
+    },
+    "button": {
+      "reboot": { "name": "Reboot" }
+    }
   }
 }

@@ -70,7 +70,13 @@ ALLOWED_PATH_PATTERNS = (
     re.compile(r"^/v1/devices$"),
     re.compile(r"^/v1/devices/[^/]+/state$"),
     re.compile(r"^/v1/devices/[^/]+/capabilities$"),
+    re.compile(r"^/v1/devices/[^/]+/summary$"),
+    re.compile(r"^/v1/devices/[^/]+/scenes$"),
+    re.compile(r"^/v1/devices/[^/]+/subscription$"),
     re.compile(r"^/v1/devices/[^/]+/actions/set-mode$"),
+    re.compile(r"^/v1/devices/[^/]+/actions/apply-scene$"),
+    re.compile(r"^/v1/devices/[^/]+/actions/clear-scenes$"),
+    re.compile(r"^/v1/devices/[^/]+/actions/reboot$"),
 )
 
 
@@ -82,15 +88,41 @@ def assert_allowed_kevin_paths(requested_paths: list[str]) -> None:
             raise AssertionError(msg)
 
 
-def state_payload(
+def summary_payload(
+    device: dict[str, Any],
     *,
     availability: str = "online",
     mode: str = "ON",
-    connected: bool = True,
+    firmware_version: str = "1.88",
+    subscription: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
+        "device": device,
         "availability": availability,
-        "reported": {"mode": mode, "connected": connected},
+        "mode": mode,
+        "firmwareVersion": firmware_version,
+        "subscription": subscription
+        or {"status": "unknown", "source": "not_configured"},
+        "scenes": [],
+    }
+
+
+def scenes_payload(
+    *,
+    scenes: list[dict[str, Any]] | None = None,
+    active_scene_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    return {
+        "scenes": scenes
+        or [
+            {
+                "id": "scene-home-1",
+                "title": "Cozy evening",
+                "description": "Warm lights",
+                "environment": "HOME",
+            },
+        ],
+        "activeSceneIds": active_scene_ids if active_scene_ids is not None else [],
     }
 
 
@@ -101,17 +133,24 @@ class KevinApiStub:
         self.base_url = base_url.rstrip("/")
         self.requested_paths: list[str] = []
         self.devices: list[dict[str, Any]] = []
-        self.states: dict[str, dict[str, Any]] = {}
+        self.summaries: dict[str, dict[str, Any]] = {}
+        self.scenes: dict[str, dict[str, Any]] = {}
         self.login_count = 0
         self.login_requests: list[dict[str, Any]] = []
         self._devices_401_once = False
         self._set_mode_calls: list[dict[str, Any]] = []
+        self._apply_scene_calls: list[dict[str, Any]] = []
+        self._reboot_calls: list[dict[str, Any]] = []
 
     def set_devices(self, devices: list[dict[str, Any]]) -> None:
         self.devices = devices
         for device in devices:
             device_id = device["id"]
-            self.states.setdefault(device_id, state_payload())
+            self.summaries.setdefault(
+                device_id,
+                summary_payload(device),
+            )
+            self.scenes.setdefault(device_id, scenes_payload())
 
     def enable_single_devices_401_retry(self) -> None:
         """First authenticated devices list returns 401 (exercises re-login)."""
@@ -157,31 +196,34 @@ class KevinApiStub:
 
         mock.get(f"{self.base_url}/v1/devices", callback=devices_handler, repeat=True)
 
-        def state_handler(url: str, **kwargs) -> CallbackResult:
+        def summary_handler(url: str, **kwargs) -> CallbackResult:
             self._record(url)
-            url_str = str(url)
-            device_id = url_str.rsplit("/", 2)[-2]
+            device_id = str(url).rsplit("/", 2)[-2]
             return CallbackResult(
                 status=200,
-                payload=self.states.get(device_id, state_payload(availability="unknown")),
+                payload=self.summaries.get(
+                    device_id,
+                    summary_payload({"id": device_id}, availability="unknown"),
+                ),
             )
 
         mock.get(
-            re.compile(rf"{re.escape(self.base_url)}/v1/devices/[^/]+/state"),
-            callback=state_handler,
+            re.compile(rf"{re.escape(self.base_url)}/v1/devices/[^/]+/summary"),
+            callback=summary_handler,
             repeat=True,
         )
 
-        def capabilities_handler(url: str, **kwargs) -> CallbackResult:
+        def scenes_handler(url: str, **kwargs) -> CallbackResult:
             self._record(url)
+            device_id = str(url).rsplit("/", 2)[-2]
             return CallbackResult(
                 status=200,
-                payload={"semantics": {"shadowWrite": True}},
+                payload=self.scenes.get(device_id, scenes_payload()),
             )
 
         mock.get(
-            re.compile(rf"{re.escape(self.base_url)}/v1/devices/[^/]+/capabilities"),
-            callback=capabilities_handler,
+            re.compile(rf"{re.escape(self.base_url)}/v1/devices/[^/]+/scenes"),
+            callback=scenes_handler,
             repeat=True,
         )
 
@@ -201,6 +243,35 @@ class KevinApiStub:
         mock.post(
             re.compile(rf"{re.escape(self.base_url)}/v1/devices/[^/]+/actions/set-mode"),
             callback=set_mode_handler,
+            repeat=True,
+        )
+
+        def apply_scene_handler(url: str, **kwargs) -> CallbackResult:
+            self._record(url)
+            headers = kwargs.get("headers") or {}
+            self._apply_scene_calls.append(
+                {
+                    "json": kwargs.get("json"),
+                    "idempotency_key": headers.get("Idempotency-Key"),
+                }
+            )
+            return CallbackResult(status=202, payload={"accepted": True})
+
+        mock.post(
+            re.compile(rf"{re.escape(self.base_url)}/v1/devices/[^/]+/actions/apply-scene"),
+            callback=apply_scene_handler,
+            repeat=True,
+        )
+
+        def reboot_handler(url: str, **kwargs) -> CallbackResult:
+            self._record(url)
+            headers = kwargs.get("headers") or {}
+            self._reboot_calls.append({"idempotency_key": headers.get("Idempotency-Key")})
+            return CallbackResult(status=202, payload={"accepted": True})
+
+        mock.post(
+            re.compile(rf"{re.escape(self.base_url)}/v1/devices/[^/]+/actions/reboot"),
+            callback=reboot_handler,
             repeat=True,
         )
 
