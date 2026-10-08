@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from aioresponses import aioresponses
+from aioresponses import CallbackResult, aioresponses
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
@@ -39,7 +39,6 @@ async def test_config_flow_invalid_credentials_translated(
             DOMAIN,
             context={"source": config_entries.SOURCE_USER},
             data={
-                CONF_BASE_URL: TEST_BASE_URL,
                 CONF_EMAIL: TEST_EMAIL,
                 CONF_PASSWORD: TEST_PASSWORD,
             },
@@ -61,7 +60,6 @@ async def test_config_flow_happy_path(hass: HomeAssistant, kevin_stub: KevinApiS
             DOMAIN,
             context={"source": config_entries.SOURCE_USER},
             data={
-                CONF_BASE_URL: TEST_BASE_URL,
                 CONF_EMAIL: TEST_EMAIL,
                 CONF_PASSWORD: TEST_PASSWORD,
             },
@@ -69,11 +67,12 @@ async def test_config_flow_happy_path(hass: HomeAssistant, kevin_stub: KevinApiS
 
     assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["title"] == TEST_EMAIL
-    assert result["data"][CONF_BASE_URL] == TEST_BASE_URL
+    assert CONF_BASE_URL not in result["data"]
     assert result["data"][CONF_EMAIL] == TEST_EMAIL
     assert result["data"][CONF_PASSWORD] == TEST_PASSWORD
     assert "access-token" not in str(result["data"])
     assert_allowed_kevin_paths(kevin_stub.requested_paths)
+    assert kevin_stub.login_requests[0]["url"] == f"{TEST_BASE_URL}/v1/auth/login"
 
     # Duplicate account aborts
     with aioresponses() as mock:
@@ -82,7 +81,6 @@ async def test_config_flow_happy_path(hass: HomeAssistant, kevin_stub: KevinApiS
             DOMAIN,
             context={"source": config_entries.SOURCE_USER},
             data={
-                CONF_BASE_URL: TEST_BASE_URL,
                 CONF_EMAIL: TEST_EMAIL,
                 CONF_PASSWORD: TEST_PASSWORD,
             },
@@ -91,39 +89,108 @@ async def test_config_flow_happy_path(hass: HomeAssistant, kevin_stub: KevinApiS
     assert duplicate["reason"] == "already_configured"
 
 
-async def test_reconfigure_updates_existing_entry_without_creating_another(
+async def test_config_flow_ignores_injected_base_url(
     hass: HomeAssistant,
+    kevin_stub: KevinApiStub,
 ) -> None:
-    """A base URL change validates and updates the linked config entry only."""
-    reconfigured_url = "https://kevin-reconfigured.test/api"
+    """Extra base_url input cannot redirect credentials to another host."""
+    evil_base = "https://evil-attacker.example/api"
+    kevin_stub.set_devices([])
+
+    def evil_login(url: str, **kwargs) -> CallbackResult:
+        msg = "Credentials must not be sent to attacker host"
+        raise AssertionError(msg)
+
+    with aioresponses() as mock:
+        mock.post(f"{evil_base}/v1/auth/login", callback=evil_login, repeat=True)
+        kevin_stub.apply(mock)
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_USER},
+            data={
+                CONF_EMAIL: TEST_EMAIL,
+                CONF_PASSWORD: TEST_PASSWORD,
+                CONF_BASE_URL: evil_base,
+            },
+        )
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert all(str(req["url"]).startswith(TEST_BASE_URL) for req in kevin_stub.login_requests)
+
+
+async def test_legacy_entry_migration_drops_base_url(
+    hass: HomeAssistant,
+    kevin_stub: KevinApiStub,
+) -> None:
+    """Version 1 entries lose stored base_url and use the fixed Kevin API host."""
+    legacy_url = "https://legacy-override.example/api"
     entry = MockConfigEntry(
         domain=DOMAIN,
+        version=1,
         unique_id=TEST_EMAIL.casefold(),
         data={
-            CONF_BASE_URL: TEST_BASE_URL,
+            CONF_BASE_URL: legacy_url,
             CONF_EMAIL: TEST_EMAIL,
             CONF_PASSWORD: TEST_PASSWORD,
         },
     )
     entry.add_to_hass(hass)
-    stub = KevinApiStub(reconfigured_url)
-    stub.set_devices([])
+    kevin_stub.set_devices([])
 
     with aioresponses() as mock:
-        stub.apply(mock)
+        kevin_stub.apply(mock)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert entry.version == 2
+    assert CONF_BASE_URL not in entry.data
+    assert all(str(req["url"]).startswith(TEST_BASE_URL) for req in kevin_stub.login_requests)
+
+
+async def test_reauth_updates_credentials_without_duplicate_entry(
+    hass: HomeAssistant,
+    kevin_stub: KevinApiStub,
+) -> None:
+    """Expired credentials can be renewed on the existing config entry."""
+    new_password = "new-secret-password"
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=TEST_EMAIL.casefold(),
+        data={
+            CONF_EMAIL: TEST_EMAIL,
+            CONF_PASSWORD: TEST_PASSWORD,
+        },
+    )
+    entry.add_to_hass(hass)
+    kevin_stub.set_devices([])
+
+    with aioresponses() as mock:
+        kevin_stub.apply(mock)
         result = await hass.config_entries.flow.async_init(
             DOMAIN,
             context={
-                "source": config_entries.SOURCE_RECONFIGURE,
+                "source": config_entries.SOURCE_REAUTH,
                 "entry_id": entry.entry_id,
             },
-            data={CONF_BASE_URL: reconfigured_url},
+        )
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "reauth_confirm"
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={
+                CONF_EMAIL: TEST_EMAIL,
+                CONF_PASSWORD: new_password,
+            },
         )
         await hass.async_block_till_done()
 
     assert result["type"] == FlowResultType.ABORT
-    assert result["reason"] == "reconfigure_successful"
-    assert entry.data[CONF_BASE_URL] == reconfigured_url
+    assert result["reason"] == "reauth_successful"
+    assert entry.data[CONF_PASSWORD] == new_password
     assert entry.data[CONF_EMAIL] == TEST_EMAIL
     assert len(hass.config_entries.async_entries(DOMAIN)) == 1
-    assert_allowed_kevin_paths(stub.requested_paths)
+    assert_allowed_kevin_paths(kevin_stub.requested_paths)
+    login_body = kevin_stub.login_requests[-1]["json"]
+    assert login_body["email"] == TEST_EMAIL
+    assert login_body["password"] == new_password
+    assert kevin_stub.login_requests[-1]["url"] == f"{TEST_BASE_URL}/v1/auth/login"

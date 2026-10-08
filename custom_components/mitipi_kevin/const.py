@@ -4,9 +4,12 @@ from datetime import timedelta
 
 DOMAIN = "mitipi_kevin"
 
-DEFAULT_BASE_URL = "https://mitipi.marmash.dev/api"
+# Single approved Kevin API host; not user-configurable.
+KEVIN_API_BASE_URL = "https://mitipi.marmash.dev/api"
 
+# Legacy config-entry key (removed on migration from version 1).
 CONF_BASE_URL = "base_url"
+
 CONF_EMAIL = "email"
 CONF_PASSWORD = "password"
 
@@ -18,10 +21,5 @@ PARALLEL_UPDATES = 5
 
 MODE_ON = "ON"
 MODE_STAND_BY = "STAND_BY"
-
-ALLOWED_API_PATH_PREFIXES = (
-    "/v1/auth/login",
-    "/v1/devices",
-)
 
 PLATFORMS = ["sensor", "binary_sensor", "switch"]

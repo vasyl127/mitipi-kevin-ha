@@ -1,12 +1,12 @@
 {
   "domain": "mitipi_kevin",
   "name": "Mitipi Kevin",
-  "codeowners": ["@mitipi"],
+  "codeowners": ["@vasyl127"],
   "config_flow": true,
-  "documentation": "https://github.com/mitipi/mitipi-kevin-ha",
+  "documentation": "https://github.com/vasyl127/mitipi-kevin-ha",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/mitipi/mitipi-kevin-ha/issues",
+  "issue_tracker": "https://github.com/vasyl127/mitipi-kevin-ha/issues",
   "requirements": [],
   "version": "0.1.0"
 }

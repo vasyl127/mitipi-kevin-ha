@@ -13,14 +13,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import KevinApiClient, KevinAuthError, KevinConnectionError
-from .const import (
-    CONF_BASE_URL,
-    CONF_EMAIL,
-    CONF_PASSWORD,
-    DOMAIN,
-    PARALLEL_UPDATES,
-    UPDATE_INTERVAL,
-)
+from .const import CONF_EMAIL, CONF_PASSWORD, DOMAIN, PARALLEL_UPDATES, UPDATE_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -118,7 +111,6 @@ def build_client_from_entry(hass: HomeAssistant, entry: ConfigEntry) -> KevinApi
 
     return create_client(
         hass,
-        entry.data[CONF_BASE_URL],
         entry.data[CONF_EMAIL],
         entry.data[CONF_PASSWORD],
     )
