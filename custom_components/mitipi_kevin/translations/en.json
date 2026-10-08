@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Mitipi Kevin",
+        "description": "Sign in with your Mitipi account. The integration talks only to the Kevin API.",
+        "data": {
+          "base_url": "Kevin API base URL",
+          "email": "Email",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Mitipi Kevin",
+        "description": "Your Kevin API credentials are no longer valid. Enter your email and password again.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Mitipi Kevin",
+        "description": "Update the Kevin API base URL and validate it before applying changes.",
+        "data": {
+          "base_url": "Kevin API base URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid email or password.",
+      "cannot_connect": "Could not reach the Kevin API. Check the base URL and try again.",
+      "unknown": "Unexpected error. Check the logs."
+    },
+    "abort": {
+      "already_configured": "This account is already configured.",
+      "reauth_successful": "Re-authentication succeeded.",
+      "reconfigure_successful": "Reconfiguration succeeded."
+    }
+  }
+}
