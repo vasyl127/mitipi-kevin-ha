@@ -1,7 +1,7 @@
 /* Kevin Presence Lovelace card (bundled with mitipi_kevin integration). */
 
 const CARD_TYPE = "kevin-presence-card";
-const ROLES = ["power", "mode", "connectivity", "firmware", "subscription", "scene", "reboot"];
+const DEVICE_ROLES = ["power", "mode", "connectivity", "firmware", "scene", "reboot"];
 const THEMES = ["ambient", "minimal", "contrast"];
 const SIZES = ["compact", "standard", "expanded"];
 const ENV_ORDER = ["HOME", "BUSINESS", "INDUSTRIAL", "Other"];
@@ -97,11 +97,19 @@ class KevinEntityResolver {
     );
     const byRole = {};
     const ambiguous = new Set();
-    for (const role of ROLES) {
+    for (const role of DEVICE_ROLES) {
       const matches = siblings.filter((e) => e.unique_id?.endsWith(`_${role}`));
       if (matches.length === 1) byRole[role] = matches[0].entity_id;
       else if (matches.length > 1) ambiguous.add(role);
     }
+    const accountSub = reg.entities.find(
+      (e) =>
+        e.platform === "mitipi_kevin" &&
+        e.config_entry_id === switchEntry.config_entry_id &&
+        e.unique_id?.endsWith("_account_subscription")
+    );
+    if (accountSub) byRole.subscription = accountSub.entity_id;
+    else ambiguous.add("subscription");
     const device = reg.devices.find((d) => d.id === deviceId);
     this._cache = { deviceId, device, byRole, ambiguous, switchEntityId };
     this._cacheKey = key;
@@ -112,6 +120,54 @@ class KevinEntityResolver {
     this._cache = null;
     this._cacheKey = "";
   }
+}
+
+function formatCoarseRemaining(seconds) {
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value <= 0) return "";
+  const days = Math.floor(value / 86400);
+  const hours = Math.floor((value % 86400) / 3600);
+  if (days > 0) return `${days} day${days === 1 ? "" : "s"} remaining`;
+  if (hours > 0) return `${hours} hour${hours === 1 ? "" : "s"} remaining`;
+  return "Less than one hour remaining";
+}
+
+function formatSubscriptionDisplay(hass, state, attrs) {
+  const status = state || "";
+  const source = attrs?.source || "";
+  if (status === "forbidden" || source === "subscription_read_forbidden") {
+    return {
+      headline: "Subscription data not accessible yet",
+      detail:
+        "Kevin could not read subscription data (permissions limitation). This is not an authentication problem.",
+    };
+  }
+  if (status === "none" || source === "no_subscription") {
+    return { headline: "No active subscription", detail: "" };
+  }
+  if (status === "unknown" && source === "not_configured") {
+    return {
+      headline: "Subscription integration not configured",
+      detail: "The Kevin API billing source is not connected in this environment.",
+    };
+  }
+  const plan = attrs.plan_code || attrs.tier || "";
+  const trial = attrs.is_trial ? "Trial" : "";
+  const locale = hass?.locale?.language || hass?.language;
+  let when = "";
+  const end = attrs.expires_at || attrs.current_period_end;
+  if (end) {
+    when = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
+      new Date(end)
+    );
+  }
+  const remaining = formatCoarseRemaining(attrs.remaining_seconds);
+  const parts = [plan, trial, when ? `Ends ${when}` : "", remaining].filter(Boolean);
+  let detail = parts.join(" · ");
+  if (attrs.cancel_at_period_end) {
+    detail = detail ? `${detail}. Will not renew at period end.` : "Will not renew at period end.";
+  }
+  return { headline: `Subscription: ${status}`, detail };
 }
 
 function getResolver(hass) {
@@ -141,7 +197,7 @@ class KevinPresenceCard extends HTMLElement {
   }
 
   static get version() {
-    return "0.2.1";
+    return "0.3.0";
   }
 
   setConfig(config) {
@@ -486,8 +542,11 @@ class KevinPresenceCard extends HTMLElement {
       connectivityText: connectivity?.state === "on" ? "Online" : connectivity?.state === "off" ? "Offline" : "Unknown",
       firmware: firmware?.state !== "unavailable" ? firmware?.state : null,
       serial: resolved.device?.serial_number || null,
-      subscriptionStatus: subscription?.state,
-      subscriptionAttrs: subscription?.attributes || {},
+      subscriptionDisplay: formatSubscriptionDisplay(
+        h,
+        subscription?.state,
+        subscription?.attributes || {}
+      ),
       sceneState: scene?.state,
       sceneCatalog: scene?.attributes?.scene_catalog || [],
       size: this._config.size,
@@ -521,11 +580,9 @@ class KevinPresenceCard extends HTMLElement {
     n.serial.className = view.size === "expanded" ? "meta" : "hidden";
     n.serial.textContent = view.serial ? `Serial ${view.serial}` : "";
     n.subscription.className = view.size === "expanded" ? "meta" : "hidden";
-    n.subscription.textContent = view.subscriptionStatus ? `Subscription: ${view.subscriptionStatus}` : "";
-    const src = view.subscriptionAttrs.source;
+    n.subscription.textContent = view.subscriptionDisplay?.headline || "";
     n.subInfo.className = view.size === "expanded" ? "meta" : "hidden";
-    n.subInfo.textContent =
-      src === "not_configured" ? "Subscription data is not connected to a billing source yet." : "";
+    n.subInfo.textContent = view.subscriptionDisplay?.detail || "";
     n.rebootBtn.classList.toggle("hidden", view.size !== "expanded" || view.ambiguous.includes("reboot"));
     n.rebootBtn.disabled = Date.now() < this._rebootBlockedUntil;
     n.note.textContent = view.error || "";

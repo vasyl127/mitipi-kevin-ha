@@ -32,7 +32,7 @@
     "sensor": {
       "mode": { "name": "Mode" },
       "firmware": { "name": "Firmware" },
-      "subscription": { "name": "Subscription" }
+      "account_subscription": { "name": "Subscription" }
     },
     "binary_sensor": {
       "connectivity": { "name": "Connectivity" }

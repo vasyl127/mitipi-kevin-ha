@@ -67,6 +67,7 @@ DEVICE_TWO = {
 
 ALLOWED_PATH_PATTERNS = (
     re.compile(r"^/v1/auth/login$"),
+    re.compile(r"^/v1/subscription$"),
     re.compile(r"^/v1/devices$"),
     re.compile(r"^/v1/devices/[^/]+/state$"),
     re.compile(r"^/v1/devices/[^/]+/capabilities$"),
@@ -141,6 +142,11 @@ class KevinApiStub:
         self._set_mode_calls: list[dict[str, Any]] = []
         self._apply_scene_calls: list[dict[str, Any]] = []
         self._reboot_calls: list[dict[str, Any]] = []
+        self.account_subscription: dict[str, Any] = {
+            "status": "unknown",
+            "source": "not_configured",
+        }
+        self.account_subscription_status = 200
 
     def set_devices(self, devices: list[dict[str, Any]]) -> None:
         self.devices = devices
@@ -195,6 +201,20 @@ class KevinApiStub:
             return CallbackResult(status=200, payload={"devices": self.devices})
 
         mock.get(f"{self.base_url}/v1/devices", callback=devices_handler, repeat=True)
+
+        def subscription_handler(url: str, **kwargs) -> CallbackResult:
+            self._record(url)
+            if self.account_subscription_status == 403:
+                return CallbackResult(
+                    status=403,
+                    payload={"code": "subscription_read_forbidden"},
+                )
+            payload = self.account_subscription
+            if "subscription" in payload:
+                return CallbackResult(status=200, payload=payload)
+            return CallbackResult(status=200, payload=payload)
+
+        mock.get(f"{self.base_url}/v1/subscription", callback=subscription_handler, repeat=True)
 
         def summary_handler(url: str, **kwargs) -> CallbackResult:
             self._record(url)

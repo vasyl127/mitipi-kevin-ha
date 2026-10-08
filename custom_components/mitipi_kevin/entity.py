@@ -41,14 +41,6 @@ def reported_mode(snapshot: KevinDeviceSnapshot | None) -> str | None:
     return None
 
 
-def subscription_from_snapshot(snapshot: KevinDeviceSnapshot | None) -> dict[str, Any] | None:
-    """Return subscription object from summary when present."""
-    if not snapshot or not snapshot.summary:
-        return None
-    sub = snapshot.summary.get("subscription")
-    return sub if isinstance(sub, dict) else None
-
-
 def firmware_version(snapshot: KevinDeviceSnapshot | None) -> str | None:
     """Return firmware version string from summary."""
     if not snapshot or not snapshot.summary:
