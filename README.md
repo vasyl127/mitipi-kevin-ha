@@ -4,7 +4,7 @@ Production-oriented custom integration that connects Home Assistant to **Mitipi 
 
 ## HACS installation
 
-1. Add this repository as a [custom repository](https://hacs.xyz/docs/faq/custom_repositories/) in HACS (Integration).
+1. In HACS → **Custom repositories**, add `https://github.com/vasyl127/mitipi-kevin-ha` as category **Integration**.
 2. Install **Mitipi Kevin** and restart Home Assistant.
 3. Go to **Settings → Devices & services → Add integration** and search for **Mitipi Kevin**.
 
@@ -12,19 +12,11 @@ Alternatively, copy `custom_components/mitipi_kevin` into your Home Assistant `c
 
 ## Configuration flow
 
-The config flow collects:
-
-| Field | Description |
-| ----- | ----------- |
-| **Kevin API base URL** | Default `https://mitipi.marmash.dev/api` |
-| **Email** | Mitipi app user email |
-| **Password** | Mitipi app user password |
+The config flow collects **email** and **password** only. All traffic uses the fixed Kevin API base URL (`https://mitipi.marmash.dev/api`); the host is not user-configurable.
 
 On submit, the integration validates credentials by logging in and calling `GET /v1/devices`. Access and ID tokens are kept **in memory only** and are not written to the config entry or logs.
 
-If the API returns `401` during normal operation, Home Assistant starts a **re-authentication** flow that asks only for email and password while preserving the configured base URL.
-
-Use the integration's **Reconfigure** action to change the Kevin API base URL. The replacement connection is validated with the existing credentials before Home Assistant saves it and reloads the entry.
+If the API returns `401` during normal operation, Home Assistant starts a **re-authentication** flow that asks only for email and password.
 
 ## Architecture
 

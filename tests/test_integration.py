@@ -13,7 +13,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mitipi_kevin.api import KevinApiClient, KevinAuthError
-from custom_components.mitipi_kevin.const import CONF_BASE_URL, CONF_EMAIL, CONF_PASSWORD, DOMAIN
+from custom_components.mitipi_kevin.const import CONF_EMAIL, CONF_PASSWORD, DOMAIN
 from tests.conftest import (
     DEVICE_ONE,
     DEVICE_TWO,
@@ -31,11 +31,10 @@ async def _setup_entry(hass: HomeAssistant, kevin_stub: KevinApiStub) -> MockCon
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
-            CONF_BASE_URL: TEST_BASE_URL,
             CONF_EMAIL: TEST_EMAIL,
             CONF_PASSWORD: TEST_PASSWORD,
         },
-        unique_id=f"{TEST_EMAIL}@{TEST_BASE_URL}",
+        unique_id=TEST_EMAIL.casefold(),
     )
     entry.add_to_hass(hass)
     with aioresponses() as mock:
@@ -71,7 +70,6 @@ async def test_zero_devices_succeeds_without_entities(
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
-            CONF_BASE_URL: TEST_BASE_URL,
             CONF_EMAIL: TEST_EMAIL,
             CONF_PASSWORD: TEST_PASSWORD,
         },
@@ -95,7 +93,6 @@ async def test_state_mapping_online_mode_and_unknown_unavailable(
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
-            CONF_BASE_URL: TEST_BASE_URL,
             CONF_EMAIL: TEST_EMAIL,
             CONF_PASSWORD: TEST_PASSWORD,
         },
@@ -136,7 +133,6 @@ async def test_switch_set_mode_idempotency_and_no_optimistic_state(
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
-            CONF_BASE_URL: TEST_BASE_URL,
             CONF_EMAIL: TEST_EMAIL,
             CONF_PASSWORD: TEST_PASSWORD,
         },
@@ -234,7 +230,6 @@ async def test_dynamic_device_discovery_without_reload(
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
-            CONF_BASE_URL: TEST_BASE_URL,
             CONF_EMAIL: TEST_EMAIL,
             CONF_PASSWORD: TEST_PASSWORD,
         },
@@ -268,7 +263,6 @@ async def test_only_documented_kevin_endpoints_requested(
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
-            CONF_BASE_URL: TEST_BASE_URL,
             CONF_EMAIL: TEST_EMAIL,
             CONF_PASSWORD: TEST_PASSWORD,
         },

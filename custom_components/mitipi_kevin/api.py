@@ -9,11 +9,24 @@ from typing import Any
 import aiohttp
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import HEADER_ID_TOKEN, HEADER_IDEMPOTENCY, MODE_ON, MODE_STAND_BY
+from .const import (
+    HEADER_ID_TOKEN,
+    HEADER_IDEMPOTENCY,
+    KEVIN_API_BASE_URL,
+    MODE_ON,
+    MODE_STAND_BY,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 _IDEMPOTENCY_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+_ALLOWED_PATH_PATTERNS = (
+    re.compile(r"^/v1/auth/login$"),
+    re.compile(r"^/v1/devices$"),
+    re.compile(r"^/v1/devices/[^/]+/state$"),
+    re.compile(r"^/v1/devices/[^/]+/capabilities$"),
+    re.compile(r"^/v1/devices/[^/]+/actions/set-mode$"),
+)
 
 
 class KevinApiError(Exception):
@@ -39,7 +52,11 @@ class KevinApiClient:
         password: str,
     ) -> None:
         self._session = session
-        self._base_url = base_url.rstrip("/")
+        normalized = base_url.rstrip("/")
+        if normalized != KEVIN_API_BASE_URL.rstrip("/"):
+            msg = "Disallowed API base URL"
+            raise KevinApiError(msg)
+        self._base_url = normalized
         self._email = email
         self._password = password
         self._access_token: str | None = None
@@ -53,16 +70,23 @@ class KevinApiClient:
     def _url(self, path: str) -> str:
         if not path.startswith("/"):
             path = f"/{path}"
+        self._ensure_allowed_path(path)
         return f"{self._base_url}{path}"
 
+    @staticmethod
+    def _ensure_allowed_path(path: str) -> None:
+        if not any(pattern.match(path) for pattern in _ALLOWED_PATH_PATTERNS):
+            msg = "Disallowed API path"
+            raise KevinApiError(msg)
+
     def _auth_headers(self) -> dict[str, str]:
-        if not self._access_token:
+        if not self._access_token or not self._id_token:
             msg = "Not authenticated"
             raise KevinAuthError(msg)
-        headers = {"Authorization": f"Bearer {self._access_token}"}
-        if self._id_token:
-            headers[HEADER_ID_TOKEN] = self._id_token
-        return headers
+        return {
+            "Authorization": f"Bearer {self._access_token}",
+            HEADER_ID_TOKEN: self._id_token,
+        }
 
     async def ensure_authenticated(self) -> None:
         """Log in when no access token is cached."""
@@ -88,10 +112,11 @@ class KevinApiClient:
             raise KevinConnectionError from err
 
         access = data.get("accessToken")
-        if not access:
+        id_token = data.get("idToken")
+        if not access or not id_token:
             raise KevinAuthError
         self._access_token = access
-        self._id_token = data.get("idToken")
+        self._id_token = id_token
 
     async def _request(
         self,
@@ -205,10 +230,9 @@ class KevinApiClient:
 
 def create_client(
     hass: Any,
-    base_url: str,
     email: str,
     password: str,
 ) -> KevinApiClient:
     """Build a client using Home Assistant's shared aiohttp session."""
     session = async_get_clientsession(hass)
-    return KevinApiClient(session, base_url, email, password)
+    return KevinApiClient(session, KEVIN_API_BASE_URL, email, password)

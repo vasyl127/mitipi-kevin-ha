@@ -40,6 +40,9 @@ Thumbs.db
 *.exe
 *.war
 
+# Agent / IDE metadata
+.claude/
+
 # Home Assistant / Python dev
 .venv/
 venv/

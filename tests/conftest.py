@@ -37,6 +37,19 @@ def prime_aiohttp_resolver_thread() -> None:
 def enable_mitipi_integration(enable_custom_integrations: None) -> None:
     """Load custom_components/mitipi_kevin for each test."""
 
+
+@pytest.fixture(autouse=True)
+def patch_kevin_api_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point the integration at the test Kevin API host."""
+    import custom_components.mitipi_kevin.api as api_mod
+    import custom_components.mitipi_kevin.config_flow as flow_mod
+    import custom_components.mitipi_kevin.const as const_mod
+
+    monkeypatch.setattr(const_mod, "KEVIN_API_BASE_URL", TEST_BASE_URL)
+    monkeypatch.setattr(flow_mod, "KEVIN_API_BASE_URL", TEST_BASE_URL)
+    monkeypatch.setattr(api_mod, "KEVIN_API_BASE_URL", TEST_BASE_URL)
+
+
 TEST_BASE_URL = "https://kevin.test/api"
 TEST_EMAIL = "user@example.com"
 TEST_PASSWORD = "secret-password"
@@ -90,6 +103,7 @@ class KevinApiStub:
         self.devices: list[dict[str, Any]] = []
         self.states: dict[str, dict[str, Any]] = {}
         self.login_count = 0
+        self.login_requests: list[dict[str, Any]] = []
         self._devices_401_once = False
         self._set_mode_calls: list[dict[str, Any]] = []
 
@@ -116,6 +130,12 @@ class KevinApiStub:
         def login_handler(url: str, **kwargs) -> CallbackResult:
             self._record(url)
             self.login_count += 1
+            self.login_requests.append(
+                {
+                    "url": str(url),
+                    "json": kwargs.get("json"),
+                }
+            )
             return CallbackResult(
                 status=200,
                 payload={
