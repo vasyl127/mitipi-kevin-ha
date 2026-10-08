@@ -69,7 +69,7 @@ size: standard
 | `theme` | no | `ambient`, `minimal`, `contrast` | `ambient` |
 | `size` | no | `compact`, `standard`, `expanded` | `standard` |
 
-Sibling entities (mode, connectivity, firmware, subscription, scene, reboot) are resolved via the device and entity registries on the same Kevin device—not by renaming patterns.
+Per-device sibling entities (mode, connectivity, firmware, scene, reboot) are resolved via the device registry on the same Kevin device. **Account subscription** is resolved once per config entry (`*_account_subscription`), shared by every Kevin card tied to that integration account.
 
 ### Sizes
 
