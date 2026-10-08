@@ -10,6 +10,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 
 from .const import CONF_EMAIL, CONF_PASSWORD, PLATFORMS
 from .coordinator import MitipiKevinCoordinator, build_client_from_entry
+from .frontend import async_register_card
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: MitipiKevinConfigEntry) -> bool:
     """Set up Mitipi Kevin from a config entry."""
+    await async_register_card(hass)
     client = build_client_from_entry(hass, entry)
     coordinator = MitipiKevinCoordinator(hass, client, entry)
     try:

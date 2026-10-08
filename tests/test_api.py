@@ -160,3 +160,33 @@ async def test_set_mode_payload_idempotency_and_refresh_not_optimistic(hass) -> 
     assert call["idempotency_key"] == idem
     assert re.match(r"^[A-Za-z0-9._-]+$", call["idempotency_key"])
     assert state["reported"]["mode"] == "STAND_BY"
+
+
+async def test_apply_scene_and_reboot_mutations(hass) -> None:
+    """apply-scene and reboot accept 202 with idempotency keys."""
+    device_id = "11111111-1111-1111-1111-111111111111"
+    calls: list[str] = []
+
+    def capture_action(url: str, **kwargs) -> CallbackResult:
+        headers = kwargs.get("headers") or {}
+        calls.append(headers.get(HEADER_IDEMPOTENCY))
+        return CallbackResult(status=202, payload={"accepted": True})
+
+    with aioresponses() as mock:
+        mock.post(
+            f"{TEST_BASE_URL}/v1/auth/login",
+            status=200,
+            payload={"accessToken": "access-token", "idToken": "id-token"},
+        )
+        mock.post(
+            re.compile(rf"{re.escape(TEST_BASE_URL)}/v1/devices/{device_id}/actions/.*"),
+            callback=capture_action,
+            repeat=True,
+        )
+        session = async_get_clientsession(hass)
+        client = KevinApiClient(session, TEST_BASE_URL, TEST_EMAIL, TEST_PASSWORD)
+        await client.login()
+        await client.apply_scene(device_id, "scene-1", "key-apply-scene")
+        await client.reboot_device(device_id, "key-reboot")
+
+    assert calls == ["key-apply-scene", "key-reboot"]

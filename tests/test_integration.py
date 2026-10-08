@@ -22,7 +22,7 @@ from tests.conftest import (
     TEST_PASSWORD,
     KevinApiStub,
     assert_allowed_kevin_paths,
-    state_payload,
+    summary_payload,
 )
 
 
@@ -51,14 +51,14 @@ async def test_coordinator_two_devices_unique_entities(
     entry = await _setup_entry(hass, kevin_stub)
     registry = er.async_get(hass)
     entities = er.async_entries_for_config_entry(registry, entry.entry_id)
-    assert len(entities) == 6
+    assert len(entities) == 14
     unique_ids = {entity.unique_id for entity in entities}
-    assert len(unique_ids) == 6
+    assert len(unique_ids) == 14
     for device in (DEVICE_ONE, DEVICE_TWO):
         device_entities = [
             e for e in entities if e.unique_id.startswith(f"{device['id']}_")
         ]
-        assert len(device_entities) == 3
+        assert len(device_entities) == 7
     assert_allowed_kevin_paths(kevin_stub.requested_paths)
 
 
@@ -89,7 +89,9 @@ async def test_state_mapping_online_mode_and_unknown_unavailable(
 ) -> None:
     """Online + ON maps correctly; unknown availability stays unavailable."""
     kevin_stub.set_devices([DEVICE_ONE])
-    kevin_stub.states[DEVICE_ONE["id"]] = state_payload(availability="online", mode="ON")
+    kevin_stub.summaries[DEVICE_ONE["id"]] = summary_payload(
+        DEVICE_ONE, availability="online", mode="ON"
+    )
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
@@ -113,7 +115,9 @@ async def test_state_mapping_online_mode_and_unknown_unavailable(
     assert hass.states.get(mode_entity).state == "ON"
     assert hass.states.get(connectivity_entity).state == "on"
 
-    kevin_stub.states[DEVICE_ONE["id"]] = state_payload(availability="unknown", mode="ON")
+    kevin_stub.summaries[DEVICE_ONE["id"]] = summary_payload(
+        DEVICE_ONE, availability="unknown", mode="ON"
+    )
     coordinator = entry.runtime_data
     with aioresponses() as mock:
         kevin_stub.apply(mock)
@@ -129,7 +133,9 @@ async def test_switch_set_mode_idempotency_and_no_optimistic_state(
 ) -> None:
     """Switch sends set-mode with idempotency key; 202 does not change reported mode."""
     kevin_stub.set_devices([DEVICE_ONE])
-    kevin_stub.states[DEVICE_ONE["id"]] = state_payload(mode="STAND_BY")
+    kevin_stub.summaries[DEVICE_ONE["id"]] = summary_payload(
+        DEVICE_ONE, mode="STAND_BY"
+    )
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
@@ -241,7 +247,7 @@ async def test_dynamic_device_discovery_without_reload(
         await hass.async_block_till_done()
 
     registry = er.async_get(hass)
-    assert len(er.async_entries_for_config_entry(registry, entry.entry_id)) == 3
+    assert len(er.async_entries_for_config_entry(registry, entry.entry_id)) == 7
 
     kevin_stub.set_devices([DEVICE_ONE, DEVICE_TWO])
     coordinator = entry.runtime_data
@@ -251,7 +257,7 @@ async def test_dynamic_device_discovery_without_reload(
         await hass.async_block_till_done()
 
     entities = er.async_entries_for_config_entry(registry, entry.entry_id)
-    assert len(entities) == 6
+    assert len(entities) == 14
     assert any(e.unique_id.startswith(f"{DEVICE_TWO['id']}_") for e in entities)
 
 
