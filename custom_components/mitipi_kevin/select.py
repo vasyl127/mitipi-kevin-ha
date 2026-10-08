@@ -107,6 +107,33 @@ class MitipiKevinSceneSelect(MitipiKevinEntity, SelectEntity):
             self.option_map,
         )
 
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose catalog metadata for the bundled Lovelace card."""
+        snapshot = self.snapshot
+        if not snapshot or not snapshot.scenes:
+            return {}
+        raw_scenes = snapshot.scenes.get("scenes")
+        if not isinstance(raw_scenes, list):
+            return {}
+        catalog: list[dict[str, Any]] = []
+        for scene in raw_scenes:
+            if not isinstance(scene, dict) or not scene.get("id"):
+                continue
+            catalog.append(
+                {
+                    "id": str(scene["id"]),
+                    "title": str(scene.get("title") or scene["id"]),
+                    "description": scene.get("description"),
+                    "environment": scene.get("environment"),
+                }
+            )
+        active = snapshot.scenes.get("activeSceneIds")
+        attrs: dict[str, Any] = {"scene_catalog": catalog}
+        if isinstance(active, list):
+            attrs["active_scene_ids"] = active
+        return attrs
+
     async def async_select_option(self, option: str) -> None:
         scene_id = self.option_map.get(option)
         if not scene_id:

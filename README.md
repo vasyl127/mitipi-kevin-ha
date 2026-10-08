@@ -40,7 +40,7 @@ The API may return `{ "status": "unknown", "source": "not_configured" }` when up
 
 ## Kevin Presence Lovelace card (bundled)
 
-Version **0.2.0** ships `kevin-presence-card.js`. After the integration loads, Home Assistant registers the script automatically—**no manual Lovelace resource entry** is required.
+Version **0.2.1** ships `kevin-presence-card.js` (URL includes the integration version for cache busting). After the integration loads, Home Assistant registers the script automatically—**no manual Lovelace resource entry** is required.
 
 Add a card in the UI or YAML (use your power switch entity id):
 
