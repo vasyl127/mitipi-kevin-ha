@@ -1,0 +1,203 @@
+"""Shared pytest fixtures."""
+
+from __future__ import annotations
+
+import re
+from collections.abc import Callable
+from typing import Any
+from urllib.parse import urlparse
+
+import pytest
+from aioresponses import CallbackResult, aioresponses
+
+pytest_plugins = "pytest_homeassistant_custom_component"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def prime_aiohttp_resolver_thread() -> None:
+    """Start aiohttp/pycares shutdown thread once so HA verify_cleanup stays stable."""
+    import asyncio
+
+    import aiohttp
+
+    async def _prime() -> None:
+        try:
+            async with aiohttp.ClientSession() as session:
+                await session.get(
+                    "http://127.0.0.1:9",
+                    timeout=aiohttp.ClientTimeout(total=0.2),
+                )
+        except Exception:
+            pass
+
+    asyncio.run(_prime())
+
+
+@pytest.fixture(autouse=True)
+def enable_mitipi_integration(enable_custom_integrations: None) -> None:
+    """Load custom_components/mitipi_kevin for each test."""
+
+TEST_BASE_URL = "https://kevin.test/api"
+TEST_EMAIL = "user@example.com"
+TEST_PASSWORD = "secret-password"
+
+DEVICE_ONE = {
+    "id": "11111111-1111-1111-1111-111111111111",
+    "kevinDeviceId": "K-DEVICEONE",
+    "name": "Living room",
+}
+DEVICE_TWO = {
+    "id": "22222222-2222-2222-2222-222222222222",
+    "kevinDeviceId": "K-DEVICETWO",
+    "name": "Bedroom",
+}
+
+ALLOWED_PATH_PATTERNS = (
+    re.compile(r"^/v1/auth/login$"),
+    re.compile(r"^/v1/devices$"),
+    re.compile(r"^/v1/devices/[^/]+/state$"),
+    re.compile(r"^/v1/devices/[^/]+/capabilities$"),
+    re.compile(r"^/v1/devices/[^/]+/actions/set-mode$"),
+)
+
+
+def assert_allowed_kevin_paths(requested_paths: list[str]) -> None:
+    """Fail when a recorded request path is outside the Kevin API surface."""
+    for path in requested_paths:
+        if not any(pattern.match(path) for pattern in ALLOWED_PATH_PATTERNS):
+            msg = f"Disallowed API path requested: {path}"
+            raise AssertionError(msg)
+
+
+def state_payload(
+    *,
+    availability: str = "online",
+    mode: str = "ON",
+    connected: bool = True,
+) -> dict[str, Any]:
+    return {
+        "availability": availability,
+        "reported": {"mode": mode, "connected": connected},
+    }
+
+
+class KevinApiStub:
+    """Register Kevin API responses and record requested paths."""
+
+    def __init__(self, base_url: str = TEST_BASE_URL) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.requested_paths: list[str] = []
+        self.devices: list[dict[str, Any]] = []
+        self.states: dict[str, dict[str, Any]] = {}
+        self.login_count = 0
+        self._devices_401_once = False
+        self._set_mode_calls: list[dict[str, Any]] = []
+
+    def set_devices(self, devices: list[dict[str, Any]]) -> None:
+        self.devices = devices
+        for device in devices:
+            device_id = device["id"]
+            self.states.setdefault(device_id, state_payload())
+
+    def enable_single_devices_401_retry(self) -> None:
+        """First authenticated devices list returns 401 (exercises re-login)."""
+        self._devices_401_once = True
+
+    def _record(self, url: str | object) -> None:
+        path = urlparse(str(url)).path
+        prefix = urlparse(self.base_url).path.rstrip("/")
+        if prefix and path.startswith(prefix):
+            path = path[len(prefix) :] or "/"
+        self.requested_paths.append(path)
+
+    def apply(self, mock: aioresponses) -> None:
+        """Register handlers on aioresponses."""
+
+        def login_handler(url: str, **kwargs) -> CallbackResult:
+            self._record(url)
+            self.login_count += 1
+            return CallbackResult(
+                status=200,
+                payload={
+                    "accessToken": "access-token",
+                    "idToken": "id-token",
+                    "tokenType": "Bearer",
+                    "expiresIn": 3600,
+                },
+            )
+
+        mock.post(f"{self.base_url}/v1/auth/login", callback=login_handler, repeat=True)
+
+        def devices_handler(url: str, **kwargs) -> CallbackResult:
+            self._record(url)
+            if self._devices_401_once:
+                self._devices_401_once = False
+                return CallbackResult(status=401)
+            return CallbackResult(status=200, payload={"devices": self.devices})
+
+        mock.get(f"{self.base_url}/v1/devices", callback=devices_handler, repeat=True)
+
+        def state_handler(url: str, **kwargs) -> CallbackResult:
+            self._record(url)
+            url_str = str(url)
+            device_id = url_str.rsplit("/", 2)[-2]
+            return CallbackResult(
+                status=200,
+                payload=self.states.get(device_id, state_payload(availability="unknown")),
+            )
+
+        mock.get(
+            re.compile(rf"{re.escape(self.base_url)}/v1/devices/[^/]+/state"),
+            callback=state_handler,
+            repeat=True,
+        )
+
+        def capabilities_handler(url: str, **kwargs) -> CallbackResult:
+            self._record(url)
+            return CallbackResult(
+                status=200,
+                payload={"semantics": {"shadowWrite": True}},
+            )
+
+        mock.get(
+            re.compile(rf"{re.escape(self.base_url)}/v1/devices/[^/]+/capabilities"),
+            callback=capabilities_handler,
+            repeat=True,
+        )
+
+        def set_mode_handler(url: str, **kwargs) -> CallbackResult:
+            self._record(url)
+            headers = kwargs.get("headers") or {}
+            idem = headers.get("Idempotency-Key") or headers.get("idempotency-key")
+            self._set_mode_calls.append(
+                {
+                    "url": str(url),
+                    "json": kwargs.get("json"),
+                    "idempotency_key": idem,
+                }
+            )
+            return CallbackResult(status=202, payload={"accepted": True})
+
+        mock.post(
+            re.compile(rf"{re.escape(self.base_url)}/v1/devices/[^/]+/actions/set-mode"),
+            callback=set_mode_handler,
+            repeat=True,
+        )
+
+
+@pytest.fixture
+def kevin_stub() -> KevinApiStub:
+    """Fresh Kevin API stub."""
+    return KevinApiStub()
+
+
+@pytest.fixture
+def mock_kevin_api(kevin_stub: KevinApiStub) -> Callable[[], aioresponses]:
+    """Context manager factory wrapping aioresponses."""
+
+    def _factory() -> aioresponses:
+        mock = aioresponses()
+        kevin_stub.apply(mock)
+        return mock
+
+    return _factory

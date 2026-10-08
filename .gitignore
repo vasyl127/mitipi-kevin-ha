@@ -40,6 +40,22 @@ Thumbs.db
 *.exe
 *.war
 
+# Home Assistant / Python dev
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.egg-info/
+dist/
+build/
+
 # Large media files
 *.mp4
 *.tiff
