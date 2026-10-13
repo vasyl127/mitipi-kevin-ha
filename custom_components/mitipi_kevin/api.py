@@ -23,6 +23,7 @@ _IDEMPOTENCY_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 _ALLOWED_PATH_PATTERNS = (
     re.compile(r"^/v1/auth/login$"),
     re.compile(r"^/v1/subscription$"),
+    re.compile(r"^/v1/preferences$"),
     re.compile(r"^/v1/devices$"),
     re.compile(r"^/v1/devices/[^/]+/state$"),
     re.compile(r"^/v1/devices/[^/]+/capabilities$"),
@@ -283,6 +284,23 @@ class KevinApiClient:
         from .subscription_helpers import parse_account_subscription
 
         return parse_account_subscription(status, data)
+
+    async def get_preferences_response(self) -> tuple[int, Any]:
+        """Account onboarding preferences: (HTTP status, body)."""
+        return await self._request("GET", "/v1/preferences")
+
+    async def patch_preferences(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Change account preferences; returns the saved preferences payload."""
+        status, data = await self._request("PATCH", "/v1/preferences", json=body)
+        if status == 401:
+            raise KevinAuthError
+        if status >= 500 and status != 502:
+            raise KevinConnectionError
+        if status != 200 or not isinstance(data, dict):
+            code = data.get("error") if isinstance(data, dict) else None
+            msg = f"Preferences update rejected ({status}{', ' + str(code) if code else ''})"
+            raise KevinApiError(msg)
+        return data
 
     async def set_mode(self, device_id: str, mode: str, idempotency_key: str) -> None:
         """Request desired mode (202 = accepted, not physical confirmation)."""

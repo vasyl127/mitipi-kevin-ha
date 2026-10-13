@@ -13,11 +13,13 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import KevinApiClient, KevinAuthError, KevinConnectionError
+from .card_helpers import normalize_preferences
 from .const import (
     CONF_EMAIL,
     CONF_PASSWORD,
     DOMAIN,
     PARALLEL_UPDATES,
+    PREFERENCES_POLL_EVERY,
     SUMMARY_RETRY_INTERVAL_POLLS,
     UPDATE_INTERVAL,
 )
@@ -61,6 +63,11 @@ class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot
         self.client = client
         self.config_entry = entry
         self.account_subscription: dict[str, Any] = {}
+        # Account onboarding preferences; None until read. `preferences_state` is
+        # "configured", "not_configured" or "unavailable" (route missing or failing).
+        self.account_preferences: dict[str, Any] | None = None
+        self.preferences_state = "unavailable"
+        self._preferences_poll = 0
         self._summary_retry_after: dict[str, int] = {}
         self._summary_fallback_logged: set[str] = set()
 
@@ -77,6 +84,37 @@ class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot
         except Exception:
             _LOGGER.debug("Account subscription read failed", exc_info=True)
             self.account_subscription = {"status": "unknown", "source": "read_error"}
+
+    async def _fetch_account_preferences(self) -> None:
+        """Preferences poll is isolated: failures never affect device entities."""
+        self._preferences_poll += 1
+        known = self.preferences_state != "unavailable"
+        if known and self._preferences_poll % PREFERENCES_POLL_EVERY:
+            return
+        try:
+            status, data = await self.client.get_preferences_response()
+        except KevinAuthError:
+            raise
+        except Exception:  # noqa: BLE001 - optional account data
+            _LOGGER.debug("Account preferences temporarily unavailable", exc_info=True)
+            return
+        if status == 401:
+            raise KevinAuthError
+        if status != 200:
+            if self.account_preferences is None:
+                self.preferences_state = "unavailable"
+            return
+        self.apply_preferences_payload(data)
+
+    def apply_preferences_payload(self, data: Any) -> None:
+        """Store a GET/PATCH /v1/preferences body."""
+        prefs = normalize_preferences(data)
+        if prefs is not None:
+            self.account_preferences = prefs
+            self.preferences_state = "configured"
+        elif isinstance(data, dict) and data.get("status") == "not_configured":
+            self.account_preferences = None
+            self.preferences_state = "not_configured"
 
     async def _fetch_device_scenes(self, device_id: str) -> dict[str, Any] | None:
         path = f"/v1/devices/{device_id}/scenes"
@@ -185,6 +223,7 @@ class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot
         try:
             await self.client.ensure_authenticated()
             await self._fetch_account_subscription()
+            await self._fetch_account_preferences()
             devices = await self.client.get_devices()
         except KevinAuthError as err:
             raise ConfigEntryAuthFailed from err

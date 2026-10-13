@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KEVIN card visual harness</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* HA default dark / light theme variables, as in the prototype gallery. */
+.th-ha-dark{--ha-font-family-body:Roboto,system-ui,sans-serif;--page:#111;--ha-card-background:#1C1C1C;--primary-text-color:#E1E1E1;--secondary-text-color:#9B9B9B;--divider-color:rgba(225,225,225,.12);--primary-color:#03A9F4;--text-primary-color:#fff;--ha-card-border-radius:12px}
+.th-ha-light{--ha-font-family-body:Roboto,system-ui,sans-serif;--page:#FAFAFA;--ha-card-background:#fff;--primary-text-color:#212121;--secondary-text-color:#6A6A6A;--divider-color:rgba(0,0,0,.12);--primary-color:#03A9F4;--text-primary-color:#fff;--ha-card-border-radius:12px}
+.th-ha-dark,.th-ha-light{--state-active-color:#FFAD00;--state-unavailable-color:#BDBDBD;--feature-height:42px;--feature-border-radius:12px;--feature-button-spacing:12px}
+body{margin:0;background:#0F1419;color:#E6ECF0;font:14px/1.5 Roboto,system-ui,sans-serif}
+.wrap{padding:20px;display:grid;gap:20px;grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
+.stage{border-radius:14px;padding:16px;background:var(--page)}
+.cap{font-size:12px;color:#93A3AF;margin-top:8px}
+.sizes{padding:20px;display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+</style>
+</head>
+<body>
+<div class="wrap" id="states"></div>
+<div class="sizes" id="sizes"></div>
+<script type="module">
+import "../../custom_components/mitipi_kevin/www/kevin-presence-card.js";
+
+const day = 864e5;
+const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+const iso = (offsetDays) => new Date(midnight.getTime() + offsetDays * day).toISOString();
+const SCHED = [[[18,23]],[[18,23]],[[18,23]],[[18,23]],[[17.5,24]],[[9,12],[19,24]],[[9,13],[19,23]]];
+
+function fakeHass(o = {}) {
+  const s = Object.assign({
+    name: "Living room", serial: "KEVIN-Z18733P", connected: true, mode: "ON", fw: "1.88", lastSeenH: 3,
+    sub: { state: "active", tier: "max", start: iso(-207), end: iso(158) },
+    prefs: { env: "HOME", chars: { kids: true, dogs: true }, occ: 3, energy: 2 },
+    current: { activity: "Kitchen and cooking", group: "Daytime, empty home", sinceMin: 42 },
+    windows: SCHED, dark: true,
+  }, o);
+  const reg = (entity_id, extra = {}) => ({ entity_id, platform: "mitipi_kevin", ...extra });
+  const entities = {
+    "switch.kevin_power": reg("switch.kevin_power", { device_id: "dev1" }),
+    "binary_sensor.kevin_connectivity": reg("binary_sensor.kevin_connectivity", { device_id: "dev1" }),
+    "sensor.kevin_firmware": reg("sensor.kevin_firmware", { device_id: "dev1", translation_key: "firmware" }),
+    "sensor.kevin_mode": reg("sensor.kevin_mode", { device_id: "dev1", translation_key: "mode" }),
+    "sensor.kevin_activity": reg("sensor.kevin_activity", { device_id: "dev1", translation_key: "activity" }),
+    "sensor.kevin_schedule": reg("sensor.kevin_schedule", { device_id: "dev1", translation_key: "schedule" }),
+    "button.kevin_reboot": reg("button.kevin_reboot", { device_id: "dev1" }),
+    "sensor.kevin_subscription": reg("sensor.kevin_subscription", { translation_key: "account_subscription" }),
+    "sensor.kevin_preferences": reg("sensor.kevin_preferences", { translation_key: "preferences" }),
+  };
+  const st = (state, attributes = {}) => ({ state, attributes });
+  const states = {
+    "switch.kevin_power": st(s.mode === "ON" ? "on" : "off"),
+    "binary_sensor.kevin_connectivity": st(s.connected ? "on" : "off", { last_seen: new Date(Date.now() - s.lastSeenH * 3600e3).toISOString() }),
+    "sensor.kevin_firmware": st(s.fw),
+    "sensor.kevin_mode": st(s.mode),
+    "sensor.kevin_activity": s.current ? st(s.current.activity, { group: s.current.group, since: new Date(Date.now() - s.current.sinceMin * 60e3).toISOString() }) : st("unknown"),
+    "sensor.kevin_schedule": st("41", { windows: s.windows }),
+    "button.kevin_reboot": st("unknown"),
+    "sensor.kevin_subscription": s.sub ? st(s.sub.state, { tier: s.sub.tier, current_period_start: s.sub.start, current_period_end: s.sub.end, is_trial: s.sub.state === "trialing" }) : st("none"),
+    "sensor.kevin_preferences": s.prefs ? st(s.prefs.env, { characteristics: s.prefs.chars, occupancy_level: s.prefs.occ, energy_level: s.prefs.energy }) : st("unavailable"),
+  };
+  const hass = {
+    entities, states, themes: { darkMode: s.dark },
+    devices: { dev1: { name: s.name, serial_number: s.serial } },
+    callWS: async () => Object.values(entities).map((e) => ({ ...e, config_entry_id: "entry1" })),
+    calls: [],
+  };
+  /* Stateful service stub: accept, then report the new state later, like HA + the API. */
+  const push = (mutate, delay) => setTimeout(() => {
+    mutate(hass.states);
+    hass.states = { ...hass.states };
+    const next = { ...hass };
+    for (const c of hass.cards || []) c.hass = next;
+    Object.assign(hass, next);
+  }, delay);
+  hass.callService = async (domain, service, data) => {
+    hass.calls.push([domain, service, data]);
+    window.__calls = (window.__calls || []).concat([[domain, service, data]]);
+    if (domain === "switch") push((st) => { st["switch.kevin_power"] = { state: service === "turn_on" ? "on" : "off", attributes: {} }; }, 700);
+    if (domain === "button") {
+      push((st) => { st["binary_sensor.kevin_connectivity"] = { state: "off", attributes: { last_seen: new Date().toISOString() } }; }, 600);
+      push((st) => { st["binary_sensor.kevin_connectivity"] = { state: "on", attributes: { last_seen: new Date().toISOString() } }; }, 1800);
+    }
+    if (domain === "mitipi_kevin" && service === "set_preferences") {
+      push((st) => { st["sensor.kevin_preferences"] = { state: data.environment, attributes: { characteristics: data.characteristics, occupancy_level: data.occupancy_level, energy_level: data.energy_level } }; }, 600);
+    }
+  };
+  hass.cards = [];
+  return hass;
+}
+
+function mount(container, cls, width, o, layout, caption) {
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `<div class="stage ${cls}"><div style="width:${width};max-width:100%;margin:0 auto"></div></div>${caption ? `<div class="cap"><b>${caption}</b></div>` : ""}`;
+  const card = document.createElement("kevin-presence-card");
+  card.setConfig({ type: "custom:kevin-presence-card", entity: "switch.kevin_power", layout });
+  const h = fakeHass(o);
+  h.cards.push(card);
+  card.hass = h;
+  wrap.querySelector(".stage > div").appendChild(card);
+  container.appendChild(wrap);
+  return card;
+}
+
+const STATES = [
+  ["On, subscription active", {}],
+  ["Standby", { mode: "STAND_BY", name: "Bedroom" }],
+  ["Offline", { connected: false, name: "Davos chalet", serial: "KEVIN-Q40912A" }],
+  ["Subscription expires soon", { name: "Office", serial: "KEVIN-B77120M", sub: { state: "active", tier: "plus", start: iso(-351), end: iso(7) } }],
+  ["Trial", { name: "Hallway", serial: "KEVIN-T20551C", sub: { state: "trialing", tier: "max", start: iso(-3), end: iso(11) }, fw: "1.86" }],
+  ["Subscription expired", { name: "Garage", serial: "KEVIN-G10883K", sub: { state: "expired", tier: "plus", start: iso(-380), end: iso(-15) } }],
+  ["No subscription (Basic)", { name: "Guest room", serial: "KEVIN-R55014D", sub: null, current: { activity: "TV and entertainment", group: "Evening at home", sinceMin: 12 } }],
+  ["Preferences open", { name: "Office", serial: "KEVIN-B88201Q", prefs: { env: "BUSINESS", chars: { customersPresent: true }, occ: 2, energy: 3 }, open: true }],
+  ["Business, no schedule, long name", { name: "Reception, second floor, east wing", serial: "KEVIN-Z99001X", fw: "1.72", windows: [[],[],[],[],[],[],[]], prefs: { env: "BUSINESS", chars: { customersPresent: true, callsAndMeetings: true }, occ: 4, energy: 3 }, current: { activity: "Meeting rooms", group: "Office hours", sinceMin: 128 } }],
+  ["Light theme", { dark: false }, "th-ha-light"],
+  ["Subscription not readable", { sub: { state: "forbidden" } }],
+];
+const statesEl = document.getElementById("states");
+STATES.forEach(([label, o, cls]) => {
+  const card = mount(statesEl, cls || "th-ha-dark", "100%", o, "standard", label);
+  if (o.open) card.shadowRoot.querySelector('[data-act="prefs"]').click();
+});
+const sizesEl = document.getElementById("sizes");
+[
+  ["compact", 220, "compact tile, 6 columns (220 px), 1 row", {}],
+  ["compact", 220, "compact tile, 6 columns, long name, standby", { name: "Warehouse hall with a very long name", mode: "STAND_BY" }],
+  ["compact", 448, "compact tile, 12 columns (448 px), 1 row", {}],
+  ["standard", 334, "standard, 9 columns (334 px, the minimum)", {}],
+  ["standard", 448, "standard, 12 columns (448 px)", {}],
+  ["full", 448, "full, 12 columns (448 px)", {}],
+  ["standard", 904, "standard on a column_span 2 section (904 px)", { mode: "STAND_BY" }],
+  ["full", 904, "full on a column_span 2 section (904 px)", {}],
+].forEach(([layout, w, cap, o]) => mount(sizesEl, "th-ha-dark", `${w}px`, o, layout, cap));
+window.__ready = true;
+</script>
+</body>
+</html>

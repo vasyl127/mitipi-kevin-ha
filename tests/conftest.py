@@ -68,6 +68,7 @@ DEVICE_TWO = {
 ALLOWED_PATH_PATTERNS = (
     re.compile(r"^/v1/auth/login$"),
     re.compile(r"^/v1/subscription$"),
+    re.compile(r"^/v1/preferences$"),
     re.compile(r"^/v1/devices$"),
     re.compile(r"^/v1/devices/[^/]+/state$"),
     re.compile(r"^/v1/devices/[^/]+/capabilities$"),
@@ -151,6 +152,20 @@ class KevinApiStub:
         self.default_summary_status = 200
         self.device_states: dict[str, dict[str, Any]] = {}
         self.device_capabilities: dict[str, dict[str, Any]] = {}
+        self.preferences_status = 200
+        self.preferences: dict[str, Any] = {
+            "status": "configured",
+            "preferences": {
+                "environment": "HOME",
+                "characteristics": {"kids": True, "teens": False, "dogs": True, "cats": False},
+                "occupancyLevel": 5.1,
+                "energyLevel": 4.9,
+                "locale": "en",
+                "updatedAt": 1790851068654,
+            },
+        }
+        self.preferences_patch_calls: list[dict[str, Any]] = []
+        self.preferences_patch_status = 200
 
     def set_devices(self, devices: list[dict[str, Any]]) -> None:
         self.devices = devices
@@ -228,6 +243,42 @@ class KevinApiStub:
             return CallbackResult(status=200, payload=payload)
 
         mock.get(f"{self.base_url}/v1/subscription", callback=subscription_handler, repeat=True)
+
+        def preferences_get_handler(url: str, **kwargs) -> CallbackResult:
+            self._record(url)
+            if self.preferences_status != 200:
+                return CallbackResult(
+                    status=self.preferences_status, payload={"error": "not_found"}
+                )
+            return CallbackResult(status=200, payload=self.preferences)
+
+        def preferences_patch_handler(url: str, **kwargs) -> CallbackResult:
+            self._record(url)
+            body = kwargs.get("json") or {}
+            self.preferences_patch_calls.append(body)
+            if self.preferences_patch_status != 200:
+                return CallbackResult(
+                    status=self.preferences_patch_status,
+                    payload={"error": "preferences_recommendation_failed"},
+                )
+            prefs = dict(self.preferences["preferences"])
+            if "environment" in body and body["environment"] != prefs["environment"]:
+                prefs["environment"] = body["environment"]
+                prefs["characteristics"] = {}
+            prefs["characteristics"] = {
+                **prefs.get("characteristics", {}),
+                **body.get("characteristics", {}),
+            }
+            for key in ("occupancyLevel", "energyLevel"):
+                if key in body:
+                    prefs[key] = body[key]
+            self.preferences = {"status": "configured", "preferences": prefs}
+            return CallbackResult(status=200, payload=self.preferences)
+
+        mock.get(f"{self.base_url}/v1/preferences", callback=preferences_get_handler, repeat=True)
+        mock.patch(
+            f"{self.base_url}/v1/preferences", callback=preferences_patch_handler, repeat=True
+        )
 
         def summary_handler(url: str, **kwargs) -> CallbackResult:
             self._record(url)

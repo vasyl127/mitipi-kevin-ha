@@ -1,0 +1,35 @@
+set_preferences:
+  target:
+    entity:
+      integration: mitipi_kevin
+      domain: sensor
+  fields:
+    environment:
+      required: false
+      selector:
+        select:
+          options:
+            - HOME
+            - BUSINESS
+            - INDUSTRIAL
+    characteristics:
+      required: false
+      example: '{"kids": true, "dogs": false}'
+      selector:
+        object:
+    occupancy_level:
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 10
+          step: 1
+          mode: slider
+    energy_level:
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 10
+          step: 1
+          mode: slider
