@@ -84,7 +84,7 @@ assert.ok(
 
 const cardEntry = globalThis.customCards.find((entry) => entry.type === "kevin-presence-card");
 assert.ok(cardEntry, "customCards must include kevin-presence-card");
-assert.equal(cardEntry.name, "Kevin Presence");
+assert.equal(cardEntry.name, "KEVIN® Presence");
 assert.equal(cardEntry.preview, true);
 
 assert.ok(

@@ -12,12 +12,12 @@ from .coordinator import KevinDeviceSnapshot, MitipiKevinCoordinator, device_api
 
 
 def device_display_name(device: dict[str, Any]) -> str:
-    """Prefer kevinDeviceId for entity/device naming."""
+    """Prefer the name given to the device in the Mitipi account, then its serial."""
+    if name := device.get("name"):
+        return str(name)
     kevin_id = device.get("kevinDeviceId")
     if kevin_id:
         return str(kevin_id)
-    if name := device.get("name"):
-        return str(name)
     return device_api_id(device)
 
 

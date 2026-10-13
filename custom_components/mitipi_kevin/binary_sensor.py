@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import MitipiKevinConfigEntry
+from .card_helpers import epoch_to_iso
 from .entity import MitipiKevinEntity, availability_from_snapshot
 from .platform_helpers import async_setup_platform_entities
 
@@ -48,3 +51,12 @@ class MitipiKevinConnectivitySensor(MitipiKevinEntity, BinarySensorEntity):
         if availability is None or availability == "unknown":
             return None
         return availability == "online"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Last connectivity report, used by the card for "last seen"."""
+        snapshot = self.snapshot
+        if not snapshot or not snapshot.summary:
+            return {}
+        last_seen = epoch_to_iso(snapshot.summary.get("lastSeenAt"))
+        return {"last_seen": last_seen} if last_seen else {}

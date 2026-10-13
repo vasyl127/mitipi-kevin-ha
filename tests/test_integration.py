@@ -51,16 +51,16 @@ async def test_coordinator_two_devices_unique_entities(
     entry = await _setup_entry(hass, kevin_stub)
     registry = er.async_get(hass)
     entities = er.async_entries_for_config_entry(registry, entry.entry_id)
-    assert len(entities) == 13
+    assert len(entities) == 18
     unique_ids = {entity.unique_id for entity in entities}
-    assert len(unique_ids) == 13
+    assert len(unique_ids) == 18
     account_subs = [e for e in entities if e.unique_id.endswith("_account_subscription")]
     assert len(account_subs) == 1
     for device in (DEVICE_ONE, DEVICE_TWO):
         device_entities = [
             e for e in entities if e.unique_id.startswith(f"{device['id']}_")
         ]
-        assert len(device_entities) == 6
+        assert len(device_entities) == 8
     assert_allowed_kevin_paths(kevin_stub.requested_paths)
 
 
@@ -83,8 +83,10 @@ async def test_zero_devices_succeeds_without_entities(
         await hass.async_block_till_done()
     registry = er.async_get(hass)
     account_entities = er.async_entries_for_config_entry(registry, entry.entry_id)
-    assert len(account_entities) == 1
-    assert account_entities[0].unique_id.endswith("_account_subscription")
+    assert sorted(e.unique_id.rsplit("_", 1)[-1] for e in account_entities) == [
+        "preferences",
+        "subscription",
+    ]
     assert_allowed_kevin_paths(kevin_stub.requested_paths)
 
 
@@ -314,7 +316,7 @@ async def test_dynamic_device_discovery_without_reload(
 
     registry = er.async_get(hass)
     # Six per-device entities plus one account subscription sensor.
-    assert len(er.async_entries_for_config_entry(registry, entry.entry_id)) == 7
+    assert len(er.async_entries_for_config_entry(registry, entry.entry_id)) == 10
 
     kevin_stub.set_devices([DEVICE_ONE, DEVICE_TWO])
     coordinator = entry.runtime_data
@@ -324,7 +326,7 @@ async def test_dynamic_device_discovery_without_reload(
         await hass.async_block_till_done()
 
     entities = er.async_entries_for_config_entry(registry, entry.entry_id)
-    assert len(entities) == 13
+    assert len(entities) == 18
     assert any(e.unique_id.startswith(f"{DEVICE_TWO['id']}_") for e in entities)
 
 

@@ -31,7 +31,29 @@ def build_summary_from_device_routes(
     if device_block:
         summary["device"] = {**summary["device"], **device_block}
 
+    _copy_card_fields(summary, state)
     return summary
+
+
+def _copy_card_fields(summary: dict[str, Any], state: dict[str, Any] | None) -> None:
+    """Carry activity, schedules and last-seen from /state in the /summary shape."""
+    if not state:
+        return
+    from .card_helpers import activity_from_state
+
+    activity = activity_from_state(state)
+    if activity:
+        api_activity: dict[str, Any] = {"id": activity.get("id"), "title": activity["title"]}
+        if isinstance(state.get("activitySince"), (int, float)):
+            api_activity["since"] = state["activitySince"]
+        summary["activity"] = api_activity
+    reported = state.get("reported")
+    if isinstance(reported, dict) and isinstance(reported.get("schedules"), list):
+        summary["schedules"] = reported["schedules"]
+    metadata = state.get("reportedMetadata")
+    connected = metadata.get("connected") if isinstance(metadata, dict) else None
+    if isinstance(connected, dict) and isinstance(connected.get("timestamp"), (int, float)):
+        summary["lastSeenAt"] = connected["timestamp"]
 
 
 def _pick_str(payload: dict[str, Any] | None, key: str) -> str | None:

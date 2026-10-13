@@ -32,7 +32,10 @@
     "sensor": {
       "mode": { "name": "Mode" },
       "firmware": { "name": "Firmware" },
-      "account_subscription": { "name": "Subscription" }
+      "activity": { "name": "Now playing" },
+      "schedule": { "name": "Schedule" },
+      "account_subscription": { "name": "Subscription" },
+      "preferences": { "name": "Preferences" }
     },
     "binary_sensor": {
       "connectivity": { "name": "Connectivity" }
@@ -45,6 +48,30 @@
     },
     "button": {
       "reboot": { "name": "Reboot" }
+    }
+  },
+  "services": {
+    "set_preferences": {
+      "name": "Set preferences",
+      "description": "Change where KEVIN lives, who lives there, and how busy and lively it is. Mirrors the Mitipi app: a fresh preset recommendation is generated and the full selection is saved.",
+      "fields": {
+        "environment": {
+          "name": "Environment",
+          "description": "HOME, BUSINESS or INDUSTRIAL. Switching resets lifestyle toggles that do not exist in the new environment."
+        },
+        "characteristics": {
+          "name": "Lifestyle",
+          "description": "Toggles for the environment, for example {\"kids\": true, \"dogs\": false}."
+        },
+        "occupancy_level": {
+          "name": "Occupancy",
+          "description": "How many people are usually around, 0 to 10."
+        },
+        "energy_level": {
+          "name": "Energy",
+          "description": "How lively the place is, 0 to 10."
+        }
+      }
     }
   }
 }
