@@ -30,24 +30,44 @@
   },
   "entity": {
     "sensor": {
-      "mode": { "name": "Mode" },
-      "firmware": { "name": "Firmware" },
-      "activity": { "name": "Now playing" },
-      "schedule": { "name": "Schedule" },
-      "account_subscription": { "name": "Subscription" },
-      "preferences": { "name": "Preferences" }
+      "mode": {
+        "name": "Mode"
+      },
+      "firmware": {
+        "name": "Firmware"
+      },
+      "activity": {
+        "name": "Now playing"
+      },
+      "schedule": {
+        "name": "Schedule"
+      },
+      "account_subscription": {
+        "name": "Subscription"
+      },
+      "preferences": {
+        "name": "Preferences"
+      }
     },
     "binary_sensor": {
-      "connectivity": { "name": "Connectivity" }
+      "connectivity": {
+        "name": "Connectivity"
+      }
     },
     "switch": {
-      "power": { "name": "Power" }
+      "power": {
+        "name": "Power"
+      }
     },
     "select": {
-      "scene": { "name": "Scene" }
+      "scene": {
+        "name": "Scene"
+      }
     },
     "button": {
-      "reboot": { "name": "Reboot" }
+      "reboot": {
+        "name": "Reboot"
+      }
     }
   },
   "services": {
@@ -72,6 +92,12 @@
           "description": "How lively the place is, 0 to 10."
         }
       }
+    }
+  },
+  "issues": {
+    "update_available": {
+      "title": "Mitipi Kevin {latest} is available",
+      "description": "You have Mitipi Kevin {installed}. Version {latest} is out, but HACS could not be asked to show it. Open HACS, choose Mitipi Kevin → Update information, then install the update and restart Home Assistant."
     }
   }
 }
