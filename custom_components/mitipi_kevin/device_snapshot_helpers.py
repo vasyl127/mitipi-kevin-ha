@@ -50,10 +50,23 @@ def _copy_card_fields(summary: dict[str, Any], state: dict[str, Any] | None) -> 
     reported = state.get("reported")
     if isinstance(reported, dict) and isinstance(reported.get("schedules"), list):
         summary["schedules"] = reported["schedules"]
-    metadata = state.get("reportedMetadata")
-    connected = metadata.get("connected") if isinstance(metadata, dict) else None
-    if isinstance(connected, dict) and isinstance(connected.get("timestamp"), (int, float)):
-        summary["lastSeenAt"] = connected["timestamp"]
+    if (last_seen := last_seen_from_metadata(state.get("reportedMetadata"))) is not None:
+        summary["lastSeenAt"] = last_seen
+
+
+def last_seen_from_metadata(metadata: Any) -> float | None:
+    """Connection-flag timestamp, else the newest reported field timestamp (as the API does)."""
+    if not isinstance(metadata, dict):
+        return None
+
+    def _ts(entry: Any) -> float | None:
+        value = entry.get("timestamp") if isinstance(entry, dict) else None
+        return value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+    if (connected := _ts(metadata.get("connected"))) is not None:
+        return connected
+    stamps = [ts for entry in metadata.values() if (ts := _ts(entry)) is not None]
+    return max(stamps) if stamps else None
 
 
 def _pick_str(payload: dict[str, Any] | None, key: str) -> str | None:

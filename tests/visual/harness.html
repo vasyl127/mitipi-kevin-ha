@@ -51,7 +51,7 @@ function fakeHass(o = {}) {
   const st = (state, attributes = {}) => ({ state, attributes });
   const states = {
     "switch.kevin_power": st(s.mode === "ON" ? "on" : "off"),
-    "binary_sensor.kevin_connectivity": st(s.connected ? "on" : "off", { last_seen: new Date(Date.now() - s.lastSeenH * 3600e3).toISOString() }),
+    "binary_sensor.kevin_connectivity": st(s.connState || (s.connected ? "on" : "off"), s.lastSeenH == null ? {} : { last_seen: new Date(Date.now() - s.lastSeenH * 3600e3).toISOString() }),
     "sensor.kevin_firmware": st(s.fw),
     "sensor.kevin_mode": st(s.mode),
     "sensor.kevin_activity": s.current ? st(s.current.activity, { group: s.current.group, since: new Date(Date.now() - s.current.sinceMin * 60e3).toISOString() }) : st("unknown"),
@@ -77,7 +77,7 @@ function fakeHass(o = {}) {
   hass.callService = async (domain, service, data) => {
     hass.calls.push([domain, service, data]);
     window.__calls = (window.__calls || []).concat([[domain, service, data]]);
-    if (domain === "switch") push((st) => { st["switch.kevin_power"] = { state: service === "turn_on" ? "on" : "off", attributes: {} }; }, 700);
+    if (domain === "switch") push((st) => { st["switch.kevin_power"] = { state: service === "turn_on" ? "on" : "off", attributes: {} }; }, s.switchDelay || 700);
     if (domain === "button") {
       push((st) => { st["binary_sensor.kevin_connectivity"] = { state: "off", attributes: { last_seen: new Date().toISOString() } }; }, 600);
       push((st) => { st["binary_sensor.kevin_connectivity"] = { state: "on", attributes: { last_seen: new Date().toISOString() } }; }, 1800);
@@ -115,11 +115,17 @@ const STATES = [
   ["Business, no schedule, long name", { name: "Reception, second floor, east wing", serial: "KEVIN-Z99001X", fw: "1.72", windows: [[],[],[],[],[],[],[]], prefs: { env: "BUSINESS", chars: { customersPresent: true, callsAndMeetings: true }, occ: 4, energy: 3 }, current: { activity: "Meeting rooms", group: "Office hours", sinceMin: 128 } }],
   ["Light theme", { dark: false }, "th-ha-light"],
   ["Subscription not readable", { sub: { state: "forbidden" } }],
+  ["Offline, last seen not known (MA-977)", { connected: false, lastSeenH: null, name: "Attic" }],
+  ["Connectivity unknown, last seen kept", { connState: "unknown", lastSeenH: 0.2, name: "Kitchen" }],
+  ["Waking up (loading)", { mode: "STAND_BY", name: "Lounge", switchDelay: 60000, wake: true }],
+  ["Going to sleep (loading)", { name: "Studio", switchDelay: 60000, sleep: true }],
 ];
 const statesEl = document.getElementById("states");
 STATES.forEach(([label, o, cls]) => {
   const card = mount(statesEl, cls || "th-ha-dark", "100%", o, "standard", label);
   if (o.open) card.shadowRoot.querySelector('[data-act="prefs"]').click();
+  if (o.wake) card._setMode("ON");
+  if (o.sleep) card._setMode("STAND_BY");
 });
 const sizesEl = document.getElementById("sizes");
 [

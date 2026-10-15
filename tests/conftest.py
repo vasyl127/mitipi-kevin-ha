@@ -103,8 +103,7 @@ def summary_payload(
         "availability": availability,
         "mode": mode,
         "firmwareVersion": firmware_version,
-        "subscription": subscription
-        or {"status": "unknown", "source": "not_configured"},
+        "subscription": subscription or {"status": "unknown", "source": "not_configured"},
         "scenes": [],
     }
 
@@ -150,6 +149,8 @@ class KevinApiStub:
         self.account_subscription_status = 200
         self.summary_status_by_device: dict[str, int] = {}
         self.default_summary_status = 200
+        self.scenes_status = 200
+        self.devices_status = 200
         self.device_states: dict[str, dict[str, Any]] = {}
         self.device_capabilities: dict[str, dict[str, Any]] = {}
         self.preferences_status = 200
@@ -226,6 +227,8 @@ class KevinApiStub:
             if self._devices_401_once:
                 self._devices_401_once = False
                 return CallbackResult(status=401)
+            if self.devices_status != 200:
+                return CallbackResult(status=self.devices_status, payload={"code": "upstream"})
             return CallbackResult(status=200, payload={"devices": self.devices})
 
         mock.get(f"{self.base_url}/v1/devices", callback=devices_handler, repeat=True)
@@ -283,9 +286,7 @@ class KevinApiStub:
         def summary_handler(url: str, **kwargs) -> CallbackResult:
             self._record(url)
             device_id = str(url).rsplit("/", 2)[-2]
-            status = self.summary_status_by_device.get(
-                device_id, self.default_summary_status
-            )
+            status = self.summary_status_by_device.get(device_id, self.default_summary_status)
             if status != 200:
                 return CallbackResult(
                     status=status,
@@ -308,6 +309,8 @@ class KevinApiStub:
         def scenes_handler(url: str, **kwargs) -> CallbackResult:
             self._record(url)
             device_id = str(url).rsplit("/", 2)[-2]
+            if self.scenes_status != 200:
+                return CallbackResult(status=self.scenes_status, payload={"code": "legacy_error"})
             return CallbackResult(
                 status=200,
                 payload=self.scenes.get(device_id, scenes_payload()),
@@ -345,9 +348,7 @@ class KevinApiStub:
             )
 
         mock.get(
-            re.compile(
-                rf"{re.escape(self.base_url)}/v1/devices/[^/]+/capabilities"
-            ),
+            re.compile(rf"{re.escape(self.base_url)}/v1/devices/[^/]+/capabilities"),
             callback=capabilities_handler,
             repeat=True,
         )

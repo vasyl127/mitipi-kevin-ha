@@ -18,8 +18,12 @@ from .const import (
     CONF_EMAIL,
     CONF_PASSWORD,
     DOMAIN,
+    MODE_CONFIRM_INTERVAL,
+    MODE_CONFIRM_TIMEOUT,
     PARALLEL_UPDATES,
     PREFERENCES_POLL_EVERY,
+    SCENES_POLL_EVERY,
+    STALE_POLLS_ALLOWED,
     SUMMARY_RETRY_INTERVAL_POLLS,
     UPDATE_INTERVAL,
 )
@@ -36,6 +40,8 @@ class KevinDeviceSnapshot:
     device: dict[str, Any]
     summary: dict[str, Any] | None
     scenes: dict[str, Any] | None
+    # Failed polls in a row for which this snapshot was carried over unchanged.
+    stale_polls: int = 0
 
 
 def device_api_id(device: dict[str, Any]) -> str:
@@ -70,6 +76,9 @@ class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot
         self._preferences_poll = 0
         self._summary_retry_after: dict[str, int] = {}
         self._summary_fallback_logged: set[str] = set()
+        self._poll = 0
+        self._failed_polls = 0
+        self._confirm_tasks: dict[str, asyncio.Task] = {}
 
     async def _fetch_account_subscription(self) -> None:
         """Subscription poll is isolated from device entity availability."""
@@ -117,22 +126,24 @@ class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot
             self.preferences_state = "not_configured"
 
     async def _fetch_device_scenes(self, device_id: str) -> dict[str, Any] | None:
+        """Scene catalog for the select entity. Optional: only auth errors propagate."""
         path = f"/v1/devices/{device_id}/scenes"
         try:
             status, data = await self.client.get_json_response(path)
-            if status == 401:
-                raise KevinAuthError
-            if status >= 500:
-                raise KevinConnectionError
-            if status == 200 and isinstance(data, dict):
-                return data
         except KevinAuthError:
             raise
-        except KevinConnectionError:
-            raise
-        except Exception:
+        except Exception:  # noqa: BLE001 - scenes never decide device availability
             _LOGGER.debug("Device %s scenes fetch failed", device_id, exc_info=True)
+            return None
+        if status == 401:
+            raise KevinAuthError
+        if status == 200 and isinstance(data, dict):
+            return data
+        _LOGGER.debug("Device %s scenes unavailable (HTTP %s)", device_id, status)
         return None
+
+    def _previous(self, device_id: str) -> KevinDeviceSnapshot | None:
+        return (self.data or {}).get(device_id)
 
     def _should_attempt_summary(self, device_id: str) -> bool:
         remaining = self._summary_retry_after.get(device_id, 0)
@@ -211,15 +222,33 @@ class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot
         semaphore: asyncio.Semaphore,
     ) -> KevinDeviceSnapshot:
         device_id = device_api_id(device)
+        previous = self._previous(device_id)
         async with semaphore:
-            scenes = await self._fetch_device_scenes(device_id)
+            # Scenes are read on the first poll and then every few polls; a failed read
+            # keeps the previous catalog.
+            scenes = previous.scenes if previous else None
+            if scenes is None or self._poll % SCENES_POLL_EVERY == 0:
+                scenes = await self._fetch_device_scenes(device_id) or scenes
             summary, needs_fallback = await self._fetch_summary_preferred(device_id)
             if summary is None and needs_fallback:
                 summary = await self._build_summary_from_routes(device, device_id)
         return KevinDeviceSnapshot(device=device, summary=summary, scenes=scenes)
 
+    def _carry_over(self, device_id: str) -> KevinDeviceSnapshot | None:
+        """Previous snapshot for a Kevin whose poll failed, while it is still fresh enough."""
+        previous = self._previous(device_id)
+        if previous is None or previous.stale_polls >= STALE_POLLS_ALLOWED:
+            return None
+        return KevinDeviceSnapshot(
+            device=previous.device,
+            summary=previous.summary,
+            scenes=previous.scenes,
+            stale_polls=previous.stale_polls + 1,
+        )
+
     async def _async_update_data(self) -> dict[str, KevinDeviceSnapshot]:
         self._tick_summary_backoff()
+        self._poll += 1
         try:
             await self.client.ensure_authenticated()
             await self._fetch_account_subscription()
@@ -227,10 +256,23 @@ class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot
             devices = await self.client.get_devices()
         except KevinAuthError as err:
             raise ConfigEntryAuthFailed from err
-        except KevinConnectionError as err:
-            raise UpdateFailed("Kevin API unavailable") from err
         except Exception as err:
+            # A short API outage keeps the last known state instead of blanking every
+            # entity; it surfaces once it lasts STALE_POLLS_ALLOWED polls.
+            self._failed_polls += 1
+            if self.data and self._failed_polls <= STALE_POLLS_ALLOWED:
+                _LOGGER.debug(
+                    "Kevin API poll failed (%s in a row); keeping last state", self._failed_polls
+                )
+                return {
+                    device_id: snap
+                    for device_id in self.data
+                    if (snap := self._carry_over(device_id)) is not None
+                }
+            if isinstance(err, KevinConnectionError):
+                raise UpdateFailed("Kevin API unavailable") from err
             raise UpdateFailed("Kevin API request failed") from err
+        self._failed_polls = 0
 
         if not devices:
             return {}
@@ -242,14 +284,64 @@ class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot
         )
 
         result: dict[str, KevinDeviceSnapshot] = {}
-        for item in snapshots:
+        for device, item in zip(devices, snapshots, strict=True):
+            device_id = device_api_id(device)
             if isinstance(item, KevinAuthError):
                 raise ConfigEntryAuthFailed from item
             if isinstance(item, BaseException):
+                _LOGGER.debug("Device %s poll failed: %s", device_id, type(item).__name__)
+                if (carried := self._carry_over(device_id)) is not None:
+                    result[device_id] = carried
                 continue
-            device_id = device_api_id(item.device)
             result[device_id] = item
         return result
+
+    async def _read_summary(self, device_id: str) -> dict[str, Any] | None:
+        """One /summary read for a single Kevin; None on any non-auth failure."""
+        try:
+            status, data = await self.client.get_json_response(f"/v1/devices/{device_id}/summary")
+        except KevinAuthError:
+            raise
+        except Exception:  # noqa: BLE001 - confirmation polling is best effort
+            return None
+        if status == 401:
+            raise KevinAuthError
+        return data if status == 200 and isinstance(data, dict) else None
+
+    async def async_confirm_mode(self, device_id: str, mode: str) -> bool:
+        """Poll one Kevin's summary until it reports `mode`, pushing every read to entities.
+
+        The device usually confirms within a few seconds; the regular poll would only
+        notice up to a minute later. Returns True once the mode is confirmed.
+        """
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + MODE_CONFIRM_TIMEOUT
+        while loop.time() < deadline:
+            await asyncio.sleep(MODE_CONFIRM_INTERVAL)
+            summary = await self._read_summary(device_id)
+            previous = self._previous(device_id)
+            if summary is None or previous is None:
+                continue
+            updated = dict(self.data or {})
+            updated[device_id] = KevinDeviceSnapshot(
+                device=previous.device, summary=summary, scenes=previous.scenes
+            )
+            self.async_set_updated_data(updated)
+            if summary.get("mode") == mode:
+                return True
+        _LOGGER.debug("Device %s did not confirm mode %s in time", device_id, mode)
+        return False
+
+    def schedule_mode_confirmation(self, device_id: str, mode: str) -> None:
+        """Start (or restart) confirmation polling for one Kevin in the background."""
+        if (running := self._confirm_tasks.get(device_id)) and not running.done():
+            running.cancel()
+        task = self.config_entry.async_create_background_task(
+            self.hass,
+            self.async_confirm_mode(device_id, mode),
+            f"{DOMAIN}_confirm_mode_{device_id}",
+        )
+        self._confirm_tasks[device_id] = task
 
 
 def build_client_from_entry(hass: HomeAssistant, entry: ConfigEntry) -> KevinApiClient:
