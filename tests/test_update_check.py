@@ -102,9 +102,15 @@ async def test_repository_not_downloaded_through_hacs_raises_repair(hass: HomeAs
 
 @pytest.mark.parametrize(
     ("status", "payload"),
-    [(403, {"message": "rate limited"}), (200, {"tag_name": "v9.9.9", "prerelease": True}), (200, {})],
+    [
+        (403, {"message": "rate limited"}),
+        (200, {"tag_name": "v9.9.9", "prerelease": True}),
+        (200, {}),
+    ],
 )
-async def test_unusable_github_answers_change_nothing(hass: HomeAssistant, status: int, payload: dict) -> None:
+async def test_unusable_github_answers_change_nothing(
+    hass: HomeAssistant, status: int, payload: dict
+) -> None:
     repository = _FakeRepository()
     hass.data["hacs"] = _FakeHacs(repository)
     with aioresponses() as mock:
