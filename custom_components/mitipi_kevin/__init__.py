@@ -11,6 +11,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from .const import CONF_EMAIL, CONF_PASSWORD, PLATFORMS
 from .coordinator import MitipiKevinCoordinator, build_client_from_entry
 from .frontend import async_register_card
+from .update_check import async_setup_update_check
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: MitipiKevinConfigEntry) 
     entry.runtime_data = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    entry.async_on_unload(async_setup_update_check(hass))
     return True
 
 

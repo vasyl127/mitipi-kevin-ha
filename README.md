@@ -12,6 +12,10 @@ Production-oriented custom integration that connects Home Assistant to **Mitipi 
 
 Alternatively, copy `custom_components/mitipi_kevin` into your Home Assistant `config/custom_components/` directory and restart.
 
+## Updates
+
+HACS re-reads custom repositories only every 48 hours, counted from Home Assistant's start, so a new release can stay invisible for days. The integration therefore checks the latest GitHub release itself, two minutes after start and then every 6 hours. When a newer version exists it asks HACS to refresh this repository, and the update appears under **Settings → Updates** with an Install button. If HACS is not available, a notice in **Settings → Repairs** links to the release instead.
+
 ## Configuration flow
 
 The config flow collects **email** and **password** only. All traffic uses the fixed Kevin API base URL (`https://mitipi.marmash.dev/api`); the host is not user-configurable.
