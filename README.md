@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/assets/logo.png" alt="Mitipi Kevin" width="128" height="128"></p>
+
 # Mitipi Kevin for Home Assistant (HACS)
 
 Production-oriented custom integration that connects Home Assistant to **Mitipi Kevin** through the Kevin HTTP API only. Home Assistant never talks to Auth0, Cognito, AWS Lambda, MQTT, or legacy AWS routes directly—credentials are exchanged once with `POST /v1/auth/login`, and all device traffic uses Bearer + `x-auth0-id-token` headers on Kevin API paths.
