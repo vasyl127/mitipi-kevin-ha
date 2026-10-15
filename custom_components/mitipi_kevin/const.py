@@ -3,7 +3,7 @@
 from datetime import timedelta
 
 DOMAIN = "mitipi_kevin"
-INTEGRATION_VERSION = "0.4.2"
+INTEGRATION_VERSION = "0.5.0"
 
 # Single approved Kevin API host; not user-configurable.
 KEVIN_API_BASE_URL = "https://mitipi.marmash.dev/api"
@@ -25,6 +25,17 @@ SUMMARY_RETRY_INTERVAL_POLLS = 10
 
 # Account preferences change rarely; read them every N polls once known.
 PREFERENCES_POLL_EVERY = 5
+
+# The scene catalog changes rarely and the summary already carries the active scenes.
+SCENES_POLL_EVERY = 5
+
+# A Kevin keeps its last known state through this many failed polls in a row before
+# its entities turn unavailable (one flaky API call must not blank the card).
+STALE_POLLS_ALLOWED = 3
+
+# After a mode change, poll only that Kevin's summary until it reports the new mode.
+MODE_CONFIRM_INTERVAL = 1.5  # seconds between summary reads
+MODE_CONFIRM_TIMEOUT = 30.0  # give up after this long; the regular poll takes over
 
 SERVICE_SET_PREFERENCES = "set_preferences"
 

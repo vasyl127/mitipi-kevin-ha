@@ -57,9 +57,7 @@ async def test_coordinator_two_devices_unique_entities(
     account_subs = [e for e in entities if e.unique_id.endswith("_account_subscription")]
     assert len(account_subs) == 1
     for device in (DEVICE_ONE, DEVICE_TWO):
-        device_entities = [
-            e for e in entities if e.unique_id.startswith(f"{device['id']}_")
-        ]
+        device_entities = [e for e in entities if e.unique_id.startswith(f"{device['id']}_")]
         assert len(device_entities) == 8
     assert_allowed_kevin_paths(kevin_stub.requested_paths)
 
@@ -117,21 +115,15 @@ async def test_summary_403_fallback_keeps_device_entities_available(
 
     registry = er.async_get(hass)
     device_id = DEVICE_ONE["id"]
-    power = hass.states.get(
-        registry.async_get_entity_id("switch", DOMAIN, f"{device_id}_power")
-    )
-    mode = hass.states.get(
-        registry.async_get_entity_id("sensor", DOMAIN, f"{device_id}_mode")
-    )
+    power = hass.states.get(registry.async_get_entity_id("switch", DOMAIN, f"{device_id}_power"))
+    mode = hass.states.get(registry.async_get_entity_id("sensor", DOMAIN, f"{device_id}_mode"))
     connectivity = hass.states.get(
         registry.async_get_entity_id("binary_sensor", DOMAIN, f"{device_id}_connectivity")
     )
     firmware = hass.states.get(
         registry.async_get_entity_id("sensor", DOMAIN, f"{device_id}_firmware")
     )
-    scene = hass.states.get(
-        registry.async_get_entity_id("select", DOMAIN, f"{device_id}_scene")
-    )
+    scene = hass.states.get(registry.async_get_entity_id("select", DOMAIN, f"{device_id}_scene"))
     sub_entry = next(
         e
         for e in er.async_entries_for_config_entry(registry, entry.entry_id)
@@ -155,7 +147,11 @@ async def test_summary_403_fallback_keeps_device_entities_available(
 async def test_state_mapping_online_mode_and_unknown_unavailable(
     hass: HomeAssistant, kevin_stub: KevinApiStub
 ) -> None:
-    """Online + ON maps correctly; unknown availability stays unavailable."""
+    """Online + ON maps correctly; unknown availability keeps connectivity readable.
+
+    Connectivity reports `unknown` (not `unavailable`) so Home Assistant keeps its
+    `last_seen` attribute for the card (MA-977); the mode sensor still goes unavailable.
+    """
     kevin_stub.set_devices([DEVICE_ONE])
     kevin_stub.summaries[DEVICE_ONE["id"]] = summary_payload(
         DEVICE_ONE, availability="online", mode="ON"
@@ -174,9 +170,7 @@ async def test_state_mapping_online_mode_and_unknown_unavailable(
         await hass.async_block_till_done()
 
     registry = er.async_get(hass)
-    mode_entity = registry.async_get_entity_id(
-        "sensor", DOMAIN, f"{DEVICE_ONE['id']}_mode"
-    )
+    mode_entity = registry.async_get_entity_id("sensor", DOMAIN, f"{DEVICE_ONE['id']}_mode")
     connectivity_entity = registry.async_get_entity_id(
         "binary_sensor", DOMAIN, f"{DEVICE_ONE['id']}_connectivity"
     )
@@ -193,7 +187,7 @@ async def test_state_mapping_online_mode_and_unknown_unavailable(
         await hass.async_block_till_done()
 
     assert hass.states.get(mode_entity).state == "unavailable"
-    assert hass.states.get(connectivity_entity).state == "unavailable"
+    assert hass.states.get(connectivity_entity).state == "unknown"
 
 
 async def test_switch_set_mode_idempotency_and_no_optimistic_state(
@@ -201,9 +195,7 @@ async def test_switch_set_mode_idempotency_and_no_optimistic_state(
 ) -> None:
     """Switch sends set-mode with idempotency key; 202 does not change reported mode."""
     kevin_stub.set_devices([DEVICE_ONE])
-    kevin_stub.summaries[DEVICE_ONE["id"]] = summary_payload(
-        DEVICE_ONE, mode="STAND_BY"
-    )
+    kevin_stub.summaries[DEVICE_ONE["id"]] = summary_payload(DEVICE_ONE, mode="STAND_BY")
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
@@ -218,9 +210,7 @@ async def test_switch_set_mode_idempotency_and_no_optimistic_state(
         await hass.async_block_till_done()
 
     registry = er.async_get(hass)
-    switch_entity = registry.async_get_entity_id(
-        "switch", DOMAIN, f"{DEVICE_ONE['id']}_power"
-    )
+    switch_entity = registry.async_get_entity_id("switch", DOMAIN, f"{DEVICE_ONE['id']}_power")
     assert hass.states.get(switch_entity).state == "off"
 
     with aioresponses() as mock:
@@ -349,9 +339,7 @@ async def test_only_documented_kevin_endpoints_requested(
         await hass.async_block_till_done()
 
     registry = er.async_get(hass)
-    switch_entity = registry.async_get_entity_id(
-        "switch", DOMAIN, f"{DEVICE_ONE['id']}_power"
-    )
+    switch_entity = registry.async_get_entity_id("switch", DOMAIN, f"{DEVICE_ONE['id']}_power")
     with aioresponses() as mock:
         kevin_stub.apply(mock)
         await hass.services.async_call(

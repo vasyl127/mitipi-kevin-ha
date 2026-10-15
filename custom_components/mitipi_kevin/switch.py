@@ -41,7 +41,7 @@ class MitipiKevinPowerSwitch(MitipiKevinEntity, SwitchEntity):
     @property
     def available(self) -> bool:
         availability = availability_from_snapshot(self.snapshot)
-        return availability is not None and availability != "unknown"
+        return super().available and availability is not None and availability != "unknown"
 
     @property
     def is_on(self) -> bool | None:
@@ -53,7 +53,9 @@ class MitipiKevinPowerSwitch(MitipiKevinEntity, SwitchEntity):
     async def _set_mode(self, mode: str) -> None:
         idempotency_key = uuid.uuid4().hex
         await self.coordinator.client.set_mode(self._device_id, mode, idempotency_key)
-        await self.coordinator.async_request_refresh()
+        # The device confirms within seconds; read just its summary until it does instead
+        # of waiting for the next full poll.
+        self.coordinator.schedule_mode_confirmation(self._device_id, mode)
 
     async def async_turn_on(self, **kwargs) -> None:
         await self._set_mode(MODE_ON)

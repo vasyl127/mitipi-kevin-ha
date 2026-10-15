@@ -33,12 +33,14 @@ Each Kevin device exposes entities with stable `unique_id` = `{apiDeviceId}_{rol
 | `sensor` | `mode` | Reported mode (`ON` / `STAND_BY`); unavailable when offline/unknown |
 | `sensor` | `firmware` | Firmware version from `/summary`, or from `/state` / `/capabilities` when summary is unavailable |
 | `sensor` | `account_subscription` | **One per Home Assistant config entry (account)**, not per device. State is subscription `status` (`trialing`, `active`, `canceled`, …, or steady states `none`, `unknown`, `forbidden`). Attributes include `plan_code`, `tier`, `interval`, `currency`, `amount_minor`, period dates, `remaining_seconds`, `is_trial`, `cancel_at_period_end`, `source`, plus `features` and `limits` maps when present. |
-| `binary_sensor` | `connectivity` | `online` → on, `offline` → off, `unknown` → unavailable |
+| `binary_sensor` | `connectivity` | `online` → on, `offline` → off, `unknown` → unknown; keeps a `last_seen` attribute with the newest known report |
 | `switch` | `power` | `turn_on` / `turn_off` → `set-mode` with idempotency key; refresh after `202`, no optimistic state |
 | `select` | `scene` | Scene titles as options; empty `activeSceneIds` → no selection; `select_option` → `apply-scene` only |
 | `button` | `reboot` | `press` → reboot action with idempotency key |
 
 The coordinator polls `GET /v1/subscription` once per account, then per device prefers `GET /v1/devices/{id}/summary` plus `GET /v1/devices/{id}/scenes`. If `/summary` fails (for example HTTP 403 while billing read permissions are missing on the deployed API), it falls back to `GET /v1/devices/{id}/state` and `GET /v1/devices/{id}/capabilities` so Power, Mode, Connectivity, Firmware, and Scene keep working. After a summary failure the integration avoids hammering `/summary` on every poll and retries occasionally. Subscription errors never mark device entities unavailable. Dynamic discovery adds entities when new devices appear.
+
+Scenes are read on the first poll and then every fifth poll; a failed `/scenes` request keeps the previous catalog and never affects power or connectivity. When one Kevin's poll fails, or the whole API is briefly unreachable, its entities keep the last known state for up to 3 polls before turning unavailable. After a mode change the integration reads only that Kevin's `/summary` every 1.5 s until it reports the new mode (up to 30 s), so the card settles a few seconds after the device does instead of waiting for the next one-minute poll. While the change is pending the card shows a loading animation.
 
 ### Account subscription
 

@@ -21,7 +21,7 @@ const EDITOR_TYPE = "kevin-presence-card-editor";
 const DOMAIN = "mitipi_kevin";
 const LAYOUTS = ["compact", "standard", "full"];
 const LEGACY_SIZE_TO_LAYOUT = { compact: "compact", standard: "standard", expanded: "full" };
-const MODE_PENDING_MS = 60000;
+const MODE_PENDING_MS = 45000;
 const REBOOT_WINDOW_MS = 150000;
 const SAVE_CONFIRM_MS = 20000;
 const LEVEL_MIN = 0;
@@ -56,8 +56,9 @@ const parseDate = (v) => {
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
 };
+/** Relative time, or null when the time is not known (never the word "unknown"). */
 function relativeAgo(date) {
-  if (!date) return "unknown";
+  if (!date) return null;
   const sec = Math.max(0, (Date.now() - date.getTime()) / 1000);
   if (sec < 90) return "just now";
   const min = Math.round(sec / 60);
@@ -346,6 +347,14 @@ const CSS = `
 .thumb[data-v="standby"]{left:calc(100% - 39px);background:#FCFCFF;color:#2B4E69;box-shadow:0 2px 6px rgba(0,0,0,.4),0 0 0 3px rgba(255,255,255,.18)}
 .thumb[data-v="off"]{left:3px;background:#8A8D90;color:#fff;box-shadow:none}
 .thumb.drag{transition:none}
+/* Loading: a light sweeps along the strip and a ring spins around the thumb while KEVIN confirms a change. */
+.strip.busy{overflow:hidden}
+.strip.busy::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.38) 50%,transparent 70%) no-repeat;background-size:45% 100%;
+  animation:kvsweep 1.3s ease-in-out infinite}
+@keyframes kvsweep{from{background-position:-60% 0}to{background-position:160% 0}}
+.thumb.busy::before{content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid currentColor;
+  border-right-color:transparent;border-bottom-color:transparent;animation:rot .8s linear infinite;opacity:.85}
 .thumb svg{width:20px;height:20px}
 
 .kv-body{padding:12px var(--pad) var(--pad);display:grid;grid-template-columns:1fr;gap:12px}
@@ -533,7 +542,7 @@ const CSS = `
   .kv:not(.compact) .np{max-width:560px}
 }
 @media (prefers-reduced-motion:reduce){
-  .kv *{animation:none!important;transition:none!important}
+  .kv *,.kv *::before,.kv *::after{animation:none!important;transition:none!important}
 }
 `;
 
@@ -780,7 +789,9 @@ class KevinPresenceCard extends HTMLElement {
       return `<div class="kv ${layout}" style="padding:16px"><div class="note">Select a KEVIN® power entity in the card settings.</div></div>`;
     }
     const busy = this._busy ? this._busy.kind : null;
-    const off = !m.connected;
+    // While a mode change is pending the card keeps showing it, even if one poll
+    // briefly loses the device: the change itself settles that question.
+    const off = !m.connected && !busy;
     const target = busy === "waking" ? "on" : busy === "sleeping" ? "standby" : m.mode === "ON" ? "on" : "standby";
     const vis = off ? "off" : target;
     const sub = subInfo(m.sub);
@@ -792,7 +803,7 @@ class KevinPresenceCard extends HTMLElement {
     if (layout === "compact") {
       const state =
         busy === "rebooting" ? "Rebooting…" : busy === "waking" ? "Waking up…" : busy === "sleeping" ? "Going to sleep…"
-          : off ? `Unavailable · ${esc(m.lastSeen)}`
+          : off ? (m.lastSeen ? `Unavailable · ${esc(m.lastSeen)}` : "Unavailable")
             : m.mode === "ON" ? (m.current ? `On · ${esc(m.current.activity)}` : "On") : "Standby";
       const warn = !off && (sub.key === "soon" || sub.key === "expired");
       const dlg = ui.dialog === "info" ? this._moreInfo(m, true) : "";
@@ -806,11 +817,12 @@ class KevinPresenceCard extends HTMLElement {
     /* ---- header ---- */
     const live = busy === "rebooting"
       ? `<span class="live warn">${pulse()}Rebooting</span>`
+      : busy && !m.connected ? `<span class="live warn">${pulse()}Reconnecting</span>`
       : off ? `<span class="live off">${pulse()}Unavailable</span>` : `<span class="live ok">${pulse()}Online</span>`;
 
     /* ---- strip ---- */
     const stateTxt = busy === "waking" ? 'Waking up<span class="dots"></span>' : busy === "sleeping" ? 'Going to sleep<span class="dots"></span>'
-      : busy === "rebooting" ? 'Rebooting<span class="dots"></span>' : off ? `Unavailable, last seen ${esc(m.lastSeen)}`
+      : busy === "rebooting" ? 'Rebooting<span class="dots"></span>' : off ? (m.lastSeen ? `Unavailable, last seen ${esc(m.lastSeen)}` : "Unavailable")
         : vis === "on" ? "On" : "Standby";
     const dis = off || busy;
     const thumbIcon = vis === "on" ? ic("sun") : vis === "standby" ? ic("moon") : ic("plug");
@@ -849,7 +861,7 @@ class KevinPresenceCard extends HTMLElement {
     } else {
       const nx = nextSlot(m.schedules);
       const why = off ? "Offline" : busy ? "Changing mode" : "Quiet";
-      const when = off ? `Last seen ${esc(m.lastSeen)}`
+      const when = off ? (m.lastSeen ? `Last seen ${esc(m.lastSeen)}` : "Not connected")
         : nx ? `Presence ${nx.live ? `runs until ${hm(nx.t)}` : `starts ${dayName(nx.k, nx.i).toLowerCase()} at ${hm(nx.f)}`}` : "No Presence scheduled";
       np = `<div class="np quiet">${wave("quiet", false)}<div class="t"><div class="nm">${why}</div><div class="sub2">${when}</div></div></div>`;
     }
@@ -915,10 +927,10 @@ class KevinPresenceCard extends HTMLElement {
       <div class="kv-stage ${playing ? "playing" : ""}">
         <div class="scene" data-anim="scene" data-v="${vis}">${layer(id, "day")}${layer(id, "night")}${layer(id, "off")}${foreground(id)}
           <div class="scene-txt"><div class="kv-name">${esc(m.name)}</div><div class="kv-serial">${esc(m.serial)}</div></div></div>
-        <div class="strip" data-anim="strip" data-v="${vis}">
+        <div class="strip ${busy ? "busy" : ""}" data-anim="strip" data-v="${vis}" ${busy ? 'aria-busy="true"' : ""}>
           <div class="track" role="switch" tabindex="${dis ? -1 : 0}" aria-checked="${vis === "on"}" aria-disabled="${dis ? "true" : "false"}" aria-label="Awake. Drag, tap or use the arrow keys" data-track data-fk="track">
             <span class="ghost l">${ic("sun")}</span><span class="ghost r">${ic("moon")}</span>
-            <span class="thumb" data-anim="thumb" data-v="${vis}">${thumbIcon}</span></div>
+            <span class="thumb ${busy ? "busy" : ""}" data-anim="thumb" data-v="${vis}">${thumbIcon}</span></div>
           <span class="state" aria-live="polite">${stateTxt}</span>
         </div>
       </div>
