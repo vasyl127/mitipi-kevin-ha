@@ -10,13 +10,12 @@ release instead.
 
 from __future__ import annotations
 
-from datetime import timedelta
 import logging
 import re
+from datetime import timedelta
 from typing import Any
 
 from aiohttp import ClientError, ClientTimeout
-
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -55,7 +54,10 @@ async def async_fetch_latest_tag(hass: HomeAssistant) -> str | None:
     try:
         async with session.get(
             LATEST_RELEASE_URL,
-            headers={"Accept": "application/vnd.github+json", "User-Agent": f"mitipi_kevin/{INTEGRATION_VERSION}"},
+            headers={
+                "Accept": "application/vnd.github+json",
+                "User-Agent": f"mitipi_kevin/{INTEGRATION_VERSION}",
+            },
             timeout=ClientTimeout(total=20),
         ) as resp:
             if resp.status != 200:
