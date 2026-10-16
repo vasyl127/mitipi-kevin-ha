@@ -16,6 +16,8 @@ Alternatively, copy `custom_components/mitipi_kevin` into your Home Assistant `c
 
 HACS re-reads custom repositories only every 48 hours, counted from Home Assistant's start, so a new release can stay invisible for days. The integration therefore checks the latest GitHub release itself, two minutes after start and then every 6 hours. When a newer version exists it asks HACS to refresh this repository, and the update appears under **Settings → Updates** with an Install button. If HACS is not available, a notice in **Settings → Repairs** links to the release instead.
 
+On Home Assistant 2026.3 and later, the integration also points the HACS update entity's picture at this integration's own brand icon (`/api/brands/integration/mitipi_kevin/icon.png`), because HACS still uses the legacy [brands CDN](https://github.com/hacs/integration/issues/5171) where custom integrations show a grey placeholder. If you set `entity_picture` for that update entity under `homeassistant.customize`, your value is kept and is not overwritten.
+
 ## Configuration flow
 
 The config flow collects **email** and **password** only. All traffic uses the fixed Kevin API base URL (`https://mitipi.marmash.dev/api`); the host is not user-configurable.

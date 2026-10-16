@@ -16,12 +16,14 @@ from datetime import timedelta
 from typing import Any
 
 from aiohttp import ClientError, ClientTimeout
+from homeassistant.const import EVENT_CORE_CONFIG_UPDATE
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 
 from .const import DOMAIN, INTEGRATION_VERSION
+from .update_icon import async_fix_hacs_update_icon
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -91,6 +93,7 @@ async def async_refresh_hacs(hass: HomeAssistant) -> bool:
         coordinator = getattr(hacs, "coordinators", {}).get(repository.data.category)
         if coordinator is not None:
             coordinator.async_update_listeners()
+        await async_fix_hacs_update_icon(hass)
     except Exception:  # noqa: BLE001 — HACS internals may change between versions
         _LOGGER.debug("Could not refresh the HACS repository", exc_info=True)
         return False
@@ -99,6 +102,7 @@ async def async_refresh_hacs(hass: HomeAssistant) -> bool:
 
 async def async_check_for_update(hass: HomeAssistant) -> str:
     """Run one check. Returns `current`, `hacs`, `repair` or `unknown` (GitHub unreachable)."""
+    await async_fix_hacs_update_icon(hass)
     latest = await async_fetch_latest_tag(hass)
     if latest is None:
         return "unknown"
@@ -135,11 +139,16 @@ def async_setup_update_check(hass: HomeAssistant) -> CALLBACK_TYPE:
         async def _run(_now: Any = None) -> None:
             await async_check_for_update(hass)
 
+        @callback
+        def _on_core_config(_event: Any) -> None:
+            hass.async_create_task(async_fix_hacs_update_icon(hass))
+
         state = {
             "users": 0,
             "unsubs": [
                 async_call_later(hass, FIRST_CHECK_DELAY, _run),
                 async_track_time_interval(hass, _run, CHECK_INTERVAL),
+                hass.bus.async_listen(EVENT_CORE_CONFIG_UPDATE, _on_core_config),
             ],
         }
         hass.data[_DATA_KEY] = state
