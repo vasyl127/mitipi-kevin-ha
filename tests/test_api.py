@@ -10,7 +10,13 @@ from aioresponses import CallbackResult, aioresponses
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from custom_components.mitipi_kevin.api import KevinApiClient, KevinApiError, KevinAuthError
-from custom_components.mitipi_kevin.const import HEADER_ID_TOKEN, HEADER_IDEMPOTENCY, MODE_ON
+from custom_components.mitipi_kevin.const import (
+    HEADER_CLIENT,
+    HEADER_ID_TOKEN,
+    HEADER_IDEMPOTENCY,
+    INTEGRATION_VERSION,
+    MODE_ON,
+)
 from tests.conftest import TEST_BASE_URL, TEST_EMAIL, TEST_PASSWORD
 
 
@@ -44,6 +50,37 @@ async def test_authenticated_requests_send_bearer_and_id_token(
     headers = captured[0]
     assert headers["Authorization"] == "Bearer access-token"
     assert headers[HEADER_ID_TOKEN] == "id-token"
+    assert headers[HEADER_CLIENT] == f"mitipi_kevin/{INTEGRATION_VERSION}"
+
+
+async def test_login_names_the_integration_release(hass) -> None:
+    """The API records which integration release is calling (admin panel shows it)."""
+    captured: list[dict[str, str]] = []
+
+    def login_handler(url: str, **kwargs) -> CallbackResult:
+        captured.append(dict(kwargs.get("headers") or {}))
+        return CallbackResult(status=200, payload={"accessToken": "a", "idToken": "i"})
+
+    with aioresponses() as mock:
+        mock.post(f"{TEST_BASE_URL}/v1/auth/login", callback=login_handler)
+        session = async_get_clientsession(hass)
+        client = KevinApiClient(session, TEST_BASE_URL, TEST_EMAIL, TEST_PASSWORD)
+        await client.login()
+
+    assert captured[0][HEADER_CLIENT] == f"mitipi_kevin/{INTEGRATION_VERSION}"
+    # Must match the API parser: /^mitipi_kevin\/(\S+)$/ with a short version token.
+    assert re.fullmatch(r"mitipi_kevin/[0-9A-Za-z][0-9A-Za-z.+-]{0,31}", captured[0][HEADER_CLIENT])
+
+
+def test_manifest_and_const_versions_match() -> None:
+    """The header reports INTEGRATION_VERSION, so it must equal the released manifest version."""
+    import json
+    from pathlib import Path
+
+    manifest = json.loads(
+        (Path(__file__).parents[1] / "custom_components/mitipi_kevin/manifest.json").read_text()
+    )
+    assert manifest["version"] == INTEGRATION_VERSION
 
 
 async def test_login_without_id_token_fails(hass) -> None:

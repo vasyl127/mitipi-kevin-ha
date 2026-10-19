@@ -10,6 +10,8 @@ import aiohttp
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
+    CLIENT_ID,
+    HEADER_CLIENT,
     HEADER_ID_TOKEN,
     HEADER_IDEMPOTENCY,
     KEVIN_API_BASE_URL,
@@ -112,6 +114,7 @@ class KevinApiClient:
             async with self._session.post(
                 url,
                 json={"email": self._email, "password": self._password},
+                headers={HEADER_CLIENT: CLIENT_ID},
             ) as resp:
                 if resp.status == 401:
                     raise KevinAuthError
@@ -146,6 +149,7 @@ class KevinApiClient:
             if auth and not self._access_token:
                 await self.login()
             headers = self._auth_headers() if auth else {}
+            headers[HEADER_CLIENT] = CLIENT_ID
             if extra_headers:
                 headers.update(extra_headers)
             url = self._url(path)

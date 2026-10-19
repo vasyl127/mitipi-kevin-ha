@@ -3,7 +3,7 @@
 from datetime import timedelta
 
 DOMAIN = "mitipi_kevin"
-INTEGRATION_VERSION = "0.5.1"
+INTEGRATION_VERSION = "0.5.2"
 
 # Single approved Kevin API host; not user-configurable.
 KEVIN_API_BASE_URL = "https://mitipi.marmash.dev/api"
@@ -16,6 +16,9 @@ CONF_PASSWORD = "password"
 
 HEADER_ID_TOKEN = "x-auth0-id-token"
 HEADER_IDEMPOTENCY = "Idempotency-Key"
+# Names this integration release to the Kevin API (shown in the admin panel).
+HEADER_CLIENT = "x-mitipi-kevin-client"
+CLIENT_ID = f"{DOMAIN}/{INTEGRATION_VERSION}"
 
 UPDATE_INTERVAL = timedelta(seconds=60)
 PARALLEL_UPDATES = 5
