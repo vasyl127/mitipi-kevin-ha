@@ -30,6 +30,19 @@ def test_card_assets_are_packaged() -> None:
         assert (brand / name).is_file(), name
 
 
+def test_icon_set_is_complete_and_clean() -> None:
+    """Every icon from the design ships, and no file carries embedded provenance metadata."""
+    icons = REPO_ROOT / "docs" / "assets" / "icons"
+    names = ["kevin-mono.svg", "kevin-color.svg", "kevin-tile.svg"]
+    kinds = ("photo", "color", "tile")
+    names += [f"kevin-{kind}-{size}.png" for kind in kinds for size in (256, 512)]
+    for name in names:
+        data = (icons / name).read_bytes()
+        assert data, name
+        assert b"c2pa" not in data.lower(), name
+        assert b"<metadata" not in data, name
+
+
 def test_card_js_url_matches_manifest_version() -> None:
     """Frontend module URL must track manifest version for cache busting."""
     assert card_js_url() == f"/mitipi_kevin/{INTEGRATION_VERSION}/kevin-presence-card.js"

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="256" height="256"><defs>
+<linearGradient id="kf" x1=".1" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="#A7AEB2"/><stop offset="1" stop-color="#848B8F"/></linearGradient>
+<linearGradient id="kp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DDE2E5"/></linearGradient>
+<linearGradient id="km" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#E0348A"/><stop offset="1" stop-color="#5C8BC1"/></linearGradient></defs>
+<ellipse cx="12.4" cy="16.9" rx="9.4" ry=".6" fill="#000" opacity=".14"/>
+<path d="M3.20 7.00L18.55 6.78Q20.35 6.80 20.90 8.45L22.42 15.15Q22.62 15.92 21.86 16.02L6.05 16.26Z" fill="url(#kf)"/>
+<path d="M3.20 7.00L6.05 16.26L2.45 16.42Q1.58 16.46 1.52 15.72L1.50 15.32Z" fill="url(#kp)"/>
+<path d="M7.90 14.00L8.72 15.63Q8.76 15.85 8.42 15.85L7.38 15.85Q7.04 15.85 7.08 15.63Z" fill="#FCFCFF"/>
+<path d="M7.90 14.00L8.72 15.63Q8.76 15.85 8.42 15.85L7.38 15.85Q7.04 15.85 7.08 15.63Z" fill="url(#km)"/></svg>

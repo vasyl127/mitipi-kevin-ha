@@ -91,7 +91,12 @@ Mode changes are not optimistic: the card shows a pending state until the switch
 
 ### Icons
 
-`custom_components/mitipi_kevin/brand/` holds the integration icon and logo (`icon.png`, `icon@2x.png`, `logo.png`, `logo@2x.png`), cut out of the product photo. The monochrome glyph used in the card is in `docs/assets/kevin-mono.svg`.
+- `custom_components/mitipi_kevin/brand/` holds the integration icon and logo shown by Home Assistant and HACS (`icon.png`, `icon@2x.png`, `logo.png`, `logo@2x.png`). They are cut out of the product photo.
+- `docs/assets/icons/` holds the full icon set from the design:
+  - `kevin-mono.svg`: the one-path glyph traced from the photo, drawn in `currentColor`. The card header and the tile use it.
+  - `kevin-color.svg`: a flat two-tone version of the traced outline.
+  - `kevin-tile.svg`: the glyph on a Mitipi navy tile.
+  - PNG renders at 256 and 512 px: `kevin-photo-*.png`, `kevin-color-*.png`, `kevin-tile-*.png`.
 
 ## Development
 
