@@ -61,15 +61,12 @@ Non-error steady states:
 
 ## Kevin Presence Lovelace card (bundled)
 
-Version **0.3.2** ships `kevin-presence-card.js` (URL includes the integration version for cache busting). After the integration loads, Home Assistant registers the script automatically—**no manual Lovelace resource entry** is required.
-
-Add a card in the UI or YAML (use your power switch entity id):
+The integration ships `kevin-presence-card.js` and registers it with the frontend automatically (the URL includes the integration version for cache busting), so **no manual Lovelace resource entry** is required. The design follows `docs/card/prototypes/kevin-ha-card-v7-ha-dark.html` and reads every colour from the active Home Assistant theme.
 
 ```yaml
 type: custom:kevin-presence-card
 entity: switch.kevin_z40189_power
-theme: ambient
-size: standard
+variant: standard
 ```
 
 ### Card configuration
@@ -77,26 +74,24 @@ size: standard
 | Key | Required | Values | Default |
 | --- | -------- | ------ | ------- |
 | `entity` | yes | Kevin **power** switch `entity_id` | — |
-| `theme` | no | `ambient`, `minimal`, `contrast` | `ambient` |
-| `size` | no | `compact`, `standard`, `expanded` | `standard` |
+| `variant` | no | `minimal`, `standard`, `full` | `standard` |
+| `name` | no | Text shown instead of the device name | device name |
 
-Per-device sibling entities (mode, connectivity, firmware, scene, reboot) are resolved via the device registry on the same Kevin device. **Account subscription** is resolved once per config entry (`*_account_subscription`), shared by every Kevin card tied to that integration account.
+Older dashboards keep working: `layout: compact` and `size: compact` map to `minimal`, `size: expanded` and `layout: full` map to `full`. Saving the card in the editor rewrites the config with `variant`.
 
-### Sizes
+### Variants
 
-- **compact** (~112px, card size 2): name, confirmed power, connectivity text, primary command.
-- **standard** (~256px, card size 5): adds beacon, full-width power command, scene entry.
-- **expanded** (~440px, card size 8): adds firmware, serial, account subscription summary (plan/tier, trial, renewal/expiry, coarse remaining time, cancel-at-period-end), low-emphasis reboot.
+- **minimal** — the Home Assistant tile, 6 × 1 in a sections grid. The icon circle switches On and Standby, the row opens more info, and a dot on the icon flags a trial, an ending or an expired subscription.
+- **standard** — the everyday card (12 columns): a window with KEVIN on a shelf and the day-night switch, now playing, the subscription ring, the week schedule, preferences behind a gear, firmware and reboot.
+- **full** — the same card unfolded: hours per day and an hour ruler on the schedule, the preferences editor always open, and a device block with serial, firmware, state and reboot.
 
-### Themes
+Standard and full reflow by their own width: one column under 560 px, the window on the left from 560 px, three body columns from 860 px.
 
-All themes use Home Assistant CSS variables (`--card-background-color`, `--primary-text-color`, `--secondary-text-color`, `--divider-color`, `--primary-color`, `--ha-card-border-radius`):
+Mode changes are not optimistic: the card shows a pending state until the switch reports the requested mode. Reboot goes through a confirmation dialog and uses `button.press`; preferences are saved with `mitipi_kevin.set_preferences`.
 
-- **ambient** — soft radial accent halo, accent-tinted primary button.
-- **minimal** — neutral ring and small accent marker, no extra decoration.
-- **contrast** — outlined controls using primary text color for borders.
+### Icons
 
-Power control is a **command button** (not an optimistic toggle): the card waits for the switch entity to report the target state after `switch.turn_on` / `switch.turn_off`. Scene apply uses `select.select_option` only; reboot uses `button.press` after confirmation.
+`custom_components/mitipi_kevin/brand/` holds the integration icon and logo (`icon.png`, `icon@2x.png`, `logo.png`, `logo@2x.png`), cut out of the product photo. The monochrome glyph used in the card is in `docs/assets/kevin-mono.svg`.
 
 ## Development
 

@@ -1,13 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-gtheme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kevin Home Assistant Card v6</title>
+<title>Kevin HA card · HA default, dark</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
+
 /* =====================================================================
    Kevin card v2 for Home Assistant.
    Idea: the card is a small window with Kevin standing on a shelf.
@@ -75,27 +76,28 @@ input[type=range]{width:100%}
 body.hagrid .kv-host{background-image:repeating-linear-gradient(0deg,rgba(255,173,0,.18) 0 56px,transparent 56px 64px);background-origin:content-box}
 body.hagrid .kv-host::after{content:attr(data-grid);position:absolute;right:0;top:-18px;font-size:11px;font-weight:600;color:#B3342B;background:rgba(255,255,255,.85);border-radius:4px;padding:1px 6px}
 .kv-host{position:relative}
-/* ============================ THEMES ============================ */
-.th-ha-light,.th-kevin-light,.th-porcelain{
-  --kv-ok:#0A7A52;--kv-okS:#DDF4EA;--kv-warn:#8A5A00;--kv-warnS:#FFF1D1;--kv-bad:#B3342B;--kv-badS:#FBE4E1;
-}
-.th-ha-dark,.th-kevin-dark{
-  --kv-ok:#4FD1A1;--kv-okS:#12332A;--kv-warn:#FFC24D;--kv-warnS:#3A2C0B;--kv-bad:#F2877E;--kv-badS:#3A1B19;
-}
-.th-ha-light{--ha-font-family-body:Roboto,system-ui,sans-serif;--page:#FAFAFA;--ha-card-background:#fff;--primary-text-color:#212121;--secondary-text-color:#6A6A6A;--divider-color:rgba(0,0,0,.12);--primary-color:#03A9F4;--text-primary-color:#fff;--ha-card-border-radius:12px;--kv-surface:#F4F5F6}
 .th-ha-dark{--ha-font-family-body:Roboto,system-ui,sans-serif;--page:#111;--ha-card-background:#1C1C1C;--primary-text-color:#E1E1E1;--secondary-text-color:#9B9B9B;--divider-color:rgba(225,225,225,.12);--primary-color:#03A9F4;--text-primary-color:#fff;--ha-card-border-radius:12px;--kv-surface:#262626}
-.th-kevin-light{--ha-font-family-body:Inter,system-ui,sans-serif;--page:#F1F5F6;--ha-card-background:#fff;--primary-text-color:#333E48;--secondary-text-color:#5F6E7A;--divider-color:#DADFE3;--primary-color:#2B4E69;--text-primary-color:#fff;--ha-card-border-radius:16px;--kv-surface:#F7F9FA}
-.th-kevin-dark{--ha-font-family-body:Inter,system-ui,sans-serif;--page:#12181D;--ha-card-background:#1A2229;--primary-text-color:#E6ECF0;--secondary-text-color:#93A3AF;--divider-color:#2D3842;--primary-color:#4B8DC5;--text-primary-color:#0E1A24;--ha-card-border-radius:16px;--kv-surface:#1F2830}
-.th-porcelain{--ha-font-family-body:Inter,system-ui,sans-serif;--page:#ECEBE8;--ha-card-background:#FAF9F7;--primary-text-color:#1D2126;--secondary-text-color:#5A6572;--divider-color:#E7E6E2;--primary-color:#23272C;--text-primary-color:#fff;--ha-card-border-radius:22px;--kv-surface:#F1F0ED}
-
-.th-ha-light,.th-ha-dark,.th-kevin-light,.th-kevin-dark,.th-porcelain{
-  /* HA state color tokens the card reads; themes may override */
-  --state-active-color:#FFAD00; --state-inactive-color:var(--secondary-text-color); --state-unavailable-color:#BDBDBD;
+.th-ha-dark{--kv-ok:#4FD1A1;--kv-okS:#12332A;--kv-warn:#FFC24D;--kv-warnS:#3A2C0B;--kv-bad:#F2877E;--kv-badS:#3A1B19;}
+.th-ha-dark{/* HA state color tokens the card reads; themes may override */
+  --state-active-color:#FFAD00;
   --feature-height:42px; --feature-border-radius:12px; --feature-button-spacing:12px;
-}
+  /* The HA blue is a mid tone: white text on it measures 2.6:1, below AA, and a bar
+     of it on a light track is under 3:1. These two mix the primary toward the theme's
+     own ink so every theme stays legible. Older engines keep the plain fallback. */
+  --kv-accent:var(--primary-color);
+  --kv-accent:color-mix(in srgb, var(--primary-color) 66%, var(--primary-text-color));
+  --kv-tint:var(--kv-surface);
+  --kv-tint:color-mix(in srgb, var(--primary-color) 16%, var(--ha-card-background));
+  --kv-ontint:var(--kv-surface);
+  --kv-ontint:color-mix(in srgb, var(--state-active-color) 22%, var(--ha-card-background));
+  --kv-offtint:var(--kv-surface);
+  --kv-offtint:color-mix(in srgb, var(--secondary-text-color) 16%, var(--ha-card-background));
+  --kv-onink:var(--state-active-color);
+  --kv-onink:color-mix(in srgb, var(--state-active-color) 58%, var(--primary-text-color));}
 /* ============================ CARD ============================ */
 .kv-host{container-type:inline-size;width:100%}
 .kv{
+  /* One layout: a 12-column section, 13 grid rows with the preferences closed. */
   --pad:16px;
   /* HA card chrome: background, border and radius come from the theme; no box shadow in modern HA themes */
   background:var(--ha-card-background,var(--card-background-color,#fff));color:var(--primary-text-color);
@@ -106,7 +108,7 @@ body.hagrid .kv-host::after{content:attr(data-grid);position:absolute;right:0;to
 .kv *{box-sizing:border-box}
 .kv button,.kv .trig,.kv .track{cursor:pointer}
 .kv button:disabled{cursor:not-allowed}
-.kv :focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
+.kv :focus-visible{outline:2px solid var(--kv-accent);outline-offset:2px}
 .kv svg{display:block}
 
 /* header: wordmark + live status */
@@ -138,7 +140,7 @@ body.hagrid .kv-host::after{content:attr(data-grid);position:absolute;right:0;to
 .scene[data-v="off"] .fg{filter:grayscale(1);opacity:.7}
 .arc{fill:none;stroke:var(--ink);stroke-width:1.6;opacity:0;transform-box:fill-box;transform-origin:center}
 .playing .arc{animation:ripple 2.4s ease-out infinite}
-@keyframes ripple{0%{transform:scale(.55);opacity:.55}100%{transform:scale(1.55);opacity:0}}
+@keyframes ripple{0%{transform:scale(1.05);opacity:.32}100%{transform:scale(1.7);opacity:0}}
 .scene-txt{position:absolute;left:14px;bottom:12px;max-width:52%;min-width:0}
 .kv-name{font-size:19px;font-weight:500;letter-spacing:-.015em;line-height:1.15;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .kv-serial{font-size:12px;font-weight:500;opacity:.85;margin-top:3px;font-variant-numeric:tabular-nums;letter-spacing:.02em}
@@ -198,7 +200,7 @@ body.hagrid .kv-host::after{content:attr(data-grid);position:absolute;right:0;to
 /* scene picker: every scene has its own waveform */
 .picker{display:flex;gap:8px}
 .trig{position:relative;flex:1;min-width:0;display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px;border:1px solid var(--divider-color);background:var(--kv-surface);border-radius:12px}
-.trig:focus-within{outline:2px solid var(--primary-color);outline-offset:2px}
+.trig:focus-within{outline:2px solid var(--kv-accent);outline-offset:2px}
 .trig.dis{opacity:.5;cursor:not-allowed}
 .trig select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px}
 .trig select:disabled{cursor:not-allowed}
@@ -229,7 +231,7 @@ body.hagrid .kv-host::after{content:attr(data-grid);position:absolute;right:0;to
 .dlg h3{margin:0 0 8px;font-size:20px;font-weight:500;line-height:1.3}
 .dlg p{margin:0 0 18px;font-size:14px;color:var(--secondary-text-color)}
 .dlg .acts{display:flex;justify-content:flex-end;gap:4px}
-.dlg .acts button{border:0;background:transparent;border-radius:999px;padding:0 16px;height:40px;font-weight:500;font-size:14px;color:var(--primary-color)}
+.dlg .acts button{border:0;background:transparent;border-radius:999px;padding:0 16px;height:40px;font-weight:500;font-size:14px;color:var(--kv-accent)}
 .dlg .acts button.danger{color:var(--kv-bad)}
 .dlg .acts button:hover{background:var(--kv-surface)}
 /* more-info dialog */
@@ -242,7 +244,6 @@ body.hagrid .kv-host::after{content:attr(data-grid);position:absolute;right:0;to
 .mi .hdr h3{margin:0}
 .mi .hdr small{display:block;font-weight:400;font-size:12px;color:var(--secondary-text-color)}
 .foot{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--divider-color);padding-top:10px}
-.kv.full .foot{align-items:center}
 .fw{font-size:13px;color:var(--secondary-text-color);display:flex;flex-direction:column;line-height:1.25}
 .fw b{font-size:14px;color:var(--primary-text-color);font-weight:500;font-variant-numeric:tabular-nums}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -263,11 +264,11 @@ body.hagrid .kv-host::after{content:attr(data-grid);position:absolute;right:0;to
 .sched .d.today{color:var(--primary-text-color);font-weight:800}
 .sched .r{position:relative;height:12px;border-radius:4px;background:var(--kv-surface);border:1px solid var(--divider-color);cursor:pointer}
 .sched .r:focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
-.sched .r.today{border-color:var(--primary-color)}
-.sched .r b{position:absolute;top:2px;bottom:2px;border-radius:3px;background:var(--primary-color);opacity:.85}
+.sched .r.today{border-color:var(--kv-accent)}
+.sched .r b{position:absolute;top:2px;bottom:2px;border-radius:3px;background:var(--kv-accent);opacity:.9}
 .sched .r.today b{opacity:1}
 .sched .r.past b{opacity:.45}
-.sched .r .now{position:absolute;top:-3px;bottom:-3px;width:2px;background:#FFAD00;border-radius:1px}
+.sched .r .now{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--kv-onink);border-radius:1px}
 .sched .r .ni{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(90deg,transparent 0 3px,var(--divider-color) 3px 4px);opacity:.6;pointer-events:none}
 .sched-foot{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--secondary-text-color);margin-top:8px}
 .sched-foot b{color:var(--primary-text-color);font-weight:700}
@@ -280,8 +281,8 @@ body.hagrid .kv-host::after{content:attr(data-grid);position:absolute;right:0;to
 .pchip{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:var(--feature-height,42px);padding:0 12px;border-radius:var(--feature-border-radius,12px);white-space:nowrap;overflow:hidden;border:1px solid var(--divider-color);background:var(--kv-surface);font-size:13px;font-weight:500;color:var(--primary-text-color);min-width:0}
 .pchip span.l{overflow:hidden;text-overflow:ellipsis}
 .pchip i{width:8px;height:8px;border-radius:50%;background:var(--divider-color);flex:0 0 auto}
-.pchip[aria-pressed="true"]{background:var(--primary-color);border-color:var(--primary-color);color:var(--text-primary-color)}
-.pchip[aria-pressed="true"] i{background:currentColor;opacity:.9}
+.pchip[aria-pressed="true"]{background:var(--kv-tint);border-color:var(--kv-accent);color:var(--primary-text-color)}
+.pchip[aria-pressed="true"] i{background:var(--kv-accent);opacity:1}
 .pchip.playing i{background:var(--state-active-color);opacity:1;box-shadow:0 0 0 3px rgba(255,173,0,.25)}
 .pchip:disabled{opacity:.5}
 .pchip .spin{width:10px;height:10px;border-width:1.5px}
@@ -293,11 +294,11 @@ body.hagrid .kv-host::after{content:attr(data-grid);position:absolute;right:0;to
 .gear{flex:0 0 auto;width:36px;height:36px;border-radius:50%;border:0;background:var(--kv-surface);color:var(--secondary-text-color);display:flex;align-items:center;justify-content:center;padding:0}
 .gear svg{width:20px;height:20px}
 .gear:hover:not(:disabled){color:var(--primary-text-color);filter:brightness(1.12)}
-.gear[aria-expanded="true"]{background:var(--primary-color);color:var(--text-primary-color)}
+.gear[aria-expanded="true"]{background:var(--kv-tint);color:var(--kv-accent)}
 .gear:disabled{opacity:.5}
 .prefs{display:flex;flex-direction:column;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--divider-color)}
 .trig{position:relative;display:flex;align-items:center;gap:10px;height:var(--feature-height,42px);padding:0 12px;border:1px solid var(--divider-color);background:var(--kv-surface);border-radius:var(--feature-border-radius,12px);cursor:pointer}
-.trig:focus-within{outline:2px solid var(--primary-color);outline-offset:2px}
+.trig:focus-within{outline:2px solid var(--kv-accent);outline-offset:2px}
 .trig.dis{opacity:.5;cursor:not-allowed}
 .trig select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px}
 .trig select:disabled{cursor:not-allowed}
@@ -309,41 +310,68 @@ body.hagrid .kv-host::after{content:attr(data-grid);position:absolute;right:0;to
 .sl-v{color:var(--secondary-text-color);font-variant-numeric:tabular-nums}
 .sl-l{display:flex;justify-content:space-between;font-size:11px;color:var(--secondary-text-color)}
 .sl input[type=range]{width:100%;height:var(--feature-height,42px);margin:0;appearance:none;-webkit-appearance:none;background:transparent;cursor:pointer}
-.sl input[type=range]::-webkit-slider-runnable-track{height:var(--feature-height,42px);border-radius:var(--feature-border-radius,12px);background:linear-gradient(90deg,var(--primary-color) 0 var(--p),var(--kv-surface) var(--p) 100%);border:1px solid var(--divider-color)}
+.sl input[type=range]::-webkit-slider-runnable-track{height:var(--feature-height,42px);border-radius:var(--feature-border-radius,12px);background:linear-gradient(90deg,var(--kv-accent) 0 var(--p),var(--kv-surface) var(--p) 100%);border:1px solid var(--divider-color)}
 .sl input[type=range]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:4px;height:26px;margin-top:7px;border-radius:2px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 .sl input[type=range]::-moz-range-track{height:var(--feature-height,42px);border-radius:var(--feature-border-radius,12px);background:var(--kv-surface);border:1px solid var(--divider-color)}
-.sl input[type=range]::-moz-range-progress{height:var(--feature-height,42px);border-radius:var(--feature-border-radius,12px);background:var(--primary-color)}
+.sl input[type=range]::-moz-range-progress{height:var(--feature-height,42px);border-radius:var(--feature-border-radius,12px);background:var(--kv-accent)}
 .sl input[type=range]::-moz-range-thumb{width:4px;height:26px;border:0;border-radius:2px;background:#fff}
 .sl input[type=range]:disabled{opacity:.5;cursor:not-allowed}
-.sl input[type=range]:focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
+.sl input[type=range]:focus-visible{outline:2px solid var(--kv-accent);outline-offset:2px}
 .saving{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--secondary-text-color);margin-left:8px}
 .saving .spin{width:10px;height:10px;border-width:1.5px}
 /* adaptive body */
 .kv-body{display:grid;grid-template-columns:1fr;gap:12px}
 .blk{min-width:0}
 
-/* ---------- compact: tile ---------- */
-.kv.compact{display:flex;align-items:center;gap:12px;padding:0 12px;height:56px}
-.tile-ic{flex:0 0 auto;width:36px;height:36px;border-radius:50%;border:0;display:flex;align-items:center;justify-content:center;padding:0;transition:background .3s,color .3s}
+/* ---------- minimal: the Home Assistant tile, one grid row ---------- */
+.kv.minimal{display:flex;align-items:center;gap:12px;padding:0 12px;height:56px}
+.tile-ic{position:relative;flex:0 0 auto;width:36px;height:36px;border-radius:50%;border:0;padding:0;
+  display:flex;align-items:center;justify-content:center;background:var(--kv-offtint);color:var(--secondary-text-color);
+  transition:background .3s,color .3s}
+.tile-ic::after{content:'';position:absolute;inset:-4px;border-radius:50%}   /* 44 px touch target */
 .tile-ic svg{width:22px;height:22px}
-.tile-ic.on{background:rgba(255,173,0,.2);color:var(--state-active-color)}
-.tile-ic.standby{background:rgba(75,141,197,.2);color:#4B8DC5}
-.tile-ic.off{background:rgba(189,189,189,.2);color:var(--state-unavailable-color)}
-.tile-ic:hover:not(:disabled){filter:brightness(1.15)}
-.tile-ic:disabled{opacity:.6}
-.kv.compact .mid{flex:1;min-width:0;cursor:pointer;border-radius:8px}
-.kv.compact .nm{font-weight:500;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kv.compact .st{font-size:12px;color:var(--secondary-text-color);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kv.compact .st.warn{color:var(--kv-warn);font-weight:500}
-/* ---------- full ---------- */
+.tile-ic.on{background:var(--kv-ontint);color:var(--kv-onink)}
+.tile-ic.standby{background:var(--kv-tint);color:var(--kv-accent)}
+.tile-ic:hover:not(:disabled){filter:brightness(1.1)}
+.tile-ic:disabled{cursor:not-allowed}
+.tile-ic .busy{position:absolute;inset:-3px;border-radius:50%;border:2px solid transparent;border-top-color:currentColor;animation:rot 1s linear infinite}
+.tile-badge{position:absolute;right:-2px;bottom:-2px;width:12px;height:12px;border-radius:50%;
+  border:2px solid var(--ha-card-background);background:var(--kv-onink)}
+.tile-badge.err{background:var(--kv-bad)}
+.kv.minimal .mid{flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;border-radius:8px;cursor:pointer;color:inherit}
+.kv.minimal .nm{font-weight:500;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kv.minimal .st{font-size:12px;color:var(--secondary-text-color);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kv.minimal .st b{font-weight:500;color:var(--primary-text-color)}
+
+/* ---------- full: the same card with its detail unfolded ---------- */
 .kv.full{--pad:20px}
-.kv.full .scene{height:180px}
-.kv.full .ring{width:96px;height:96px}
-.kv.full .ring .big{font-size:26px}
-.kv.full .kv-body{gap:20px}
-.kv.full .np{padding:12px 14px}
+.kv.full .scene{height:184px}
 .kv.full .kv-name{font-size:22px}
-.kv.full .foot{align-items:flex-start}
+.kv.full .kv-body{gap:18px}
+.kv.full .np{padding:12px 14px}
+.kv.full .sched{grid-template-columns:auto 1fr auto;gap:4px 10px}
+.kv.full .sched .r{height:16px}
+.kv.full .sched .r::before{content:'';position:absolute;inset:0;pointer-events:none;border-radius:4px;
+  background:repeating-linear-gradient(90deg,transparent 0 calc(25% - 1px),var(--divider-color) calc(25% - 1px),var(--divider-color) 25%)}
+.kv.full .sched .dayhrs{font-size:11px;color:var(--secondary-text-color);font-variant-numeric:tabular-nums;text-align:right;min-width:30px}
+.kv.full .ruler{position:relative;height:14px}
+.kv.full .ruler span{position:absolute;top:0;font-size:10px;color:var(--secondary-text-color);transform:translateX(-50%);font-variant-numeric:tabular-nums}
+.kv.full .ruler span:first-child{transform:none}
+.kv.full .ruler span:last-child{transform:translateX(-100%)}
+.devl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 12px;font-size:13px}
+.devl dt{color:var(--secondary-text-color)}
+.devl dd{margin:0;font-weight:500;overflow-wrap:anywhere}
+.kv.full .dev .fbtn{width:100%}
+.kv.full .pref-row{min-height:0}
+.kv.full .prefs{margin-top:8px;padding-top:0;border-top:0}
+
+.kv.full .fcols{padding:12px var(--pad) var(--pad)}
+.kv.full .fcols > *{break-inside:avoid;margin:0 0 18px}
+.kv.full .fcols > :last-child{margin-bottom:0}
+.kv.full .fcols .kv-stage{margin:0 0 18px;align-self:auto}
+/* an explicit display beats the hidden attribute, so say it again */
+.kv [hidden]{display:none!important}
+.kv.full .np .nm,.kv.full .np .sub2{white-space:normal;overflow:visible}
 
 /* ---------- narrow ---------- */
 @container (max-width:319px){
@@ -351,40 +379,93 @@ body.hagrid .kv-host::after{content:attr(data-grid);position:absolute;right:0;to
   .kv-name{font-size:16px}
   .ring{width:76px;height:76px}.ring .big{font-size:21px}
   .sub{gap:12px}
-  .picker{flex-direction:column}.picker .btn{width:100%}
   .foot{flex-direction:column;align-items:stretch}
-  .hold{justify-content:center}
 }
 /* ---------- wide: window left, controls right ---------- */
 @container (min-width:560px){
-  .kv:not(.compact){display:grid;grid-template-columns:minmax(240px,40%) 1fr;grid-template-rows:auto 1fr}
-  .kv:not(.compact) .kv-body{grid-template-columns:1fr 1fr;align-content:start;column-gap:20px}
-  .kv:not(.compact) .blk.foot{grid-column:1/-1}
-  .kv:not(.compact) .blk.now{grid-column:1/-1}
-  .kv:not(.compact) .kv-head{grid-column:1/-1}
-  .kv:not(.compact) .kv-stage{margin:12px 0 var(--pad) var(--pad);display:flex;flex-direction:column;align-self:start}
-  .kv:not(.compact) .scene{height:auto;aspect-ratio:400/230}
-  .kv.full:not(.compact) .kv-stage{margin-left:20px;margin-bottom:20px}
-  .kv:not(.compact) .kv-body{padding-top:12px}
+  .kv.minimal{display:flex}
+  .kv:not(.minimal){display:grid;grid-template-columns:minmax(240px,40%) 1fr;grid-template-rows:auto 1fr}
+  .kv:not(.minimal) .kv-body{grid-template-columns:1fr 1fr;align-content:start;column-gap:20px}
+  .kv:not(.minimal) .blk.foot,.kv:not(.minimal) .blk.now,.kv:not(.minimal) .blk.sched{grid-column:1/-1}
+  .kv:not(.minimal) .kv-head{grid-column:1/-1}
+  .kv:not(.minimal) .kv-stage{margin:12px 0 var(--pad) var(--pad);display:flex;flex-direction:column;align-self:start}
+  .kv:not(.minimal) .scene{height:auto;aspect-ratio:400/230}
+  .kv:not(.minimal) .kv-body{padding-top:12px}
 }
 @container (min-width:860px){
-  .kv:not(.compact){grid-template-columns:minmax(260px,30%) 1fr}
-  .kv:not(.compact) .kv-body{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1.2fr)}
-  .kv:not(.compact) .chipset{grid-template-columns:1fr}
-  .kv:not(.compact) .chipset .pchip{justify-content:flex-start}
-  .kv:not(.compact) .chipset .pchip:last-child:nth-child(odd){grid-column:auto}
-  .kv:not(.compact) .trig .hint2{display:none}
-  .kv:not(.compact) .pref-sum{white-space:normal;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;line-height:1.35}
-  .kv:not(.compact) .pref-row{align-items:flex-start}
-  .kv:not(.compact) .trig .nm{flex:1}
-  .kv:not(.compact) .subtxt{gap:4px}
-  .kv:not(.compact) .ends{font-size:14px}
-  .kv:not(.compact) .sub{gap:12px}
-  .kv:not(.compact) .ring{width:76px;height:76px}
-  .kv:not(.compact) .ring .big{font-size:21px}
-  .kv:not(.compact) .blk.now{grid-column:1/-1}
-  .kv:not(.compact) .blk.foot{grid-column:1/-1}
-  .kv:not(.compact) .np{max-width:560px}
+  .kv:not(.minimal){grid-template-columns:minmax(260px,30%) 1fr}
+  .kv:not(.minimal) .kv-body{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1.2fr)}
+  .kv:not(.minimal) .chipset{grid-template-columns:1fr}
+  .kv:not(.minimal) .chipset .pchip{justify-content:flex-start}
+  .kv:not(.minimal) .chipset .pchip:last-child:nth-child(odd){grid-column:auto}
+  .kv:not(.minimal) .trig .hint2{display:none}
+  .kv:not(.minimal) .pref-sum{white-space:normal;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;line-height:1.35}
+  .kv:not(.minimal) .pref-row{align-items:flex-start}
+  .kv:not(.minimal) .trig .nm{flex:1}
+  .kv:not(.minimal) .subtxt{gap:4px}
+  .kv:not(.minimal) .ends{font-size:14px}
+  .kv:not(.minimal) .sub{gap:12px}
+  .kv:not(.minimal) .ring{width:76px;height:76px}
+  .kv:not(.minimal) .ring .big{font-size:21px}
+  .kv:not(.minimal) .blk.now{grid-column:1/-1}
+  .kv:not(.minimal) .blk.foot{grid-column:1/-1}
+  .kv:not(.minimal) .np{max-width:560px}
+}
+/* ---------- full: balanced columns, placed after the generic wide rules so they win ---------- */
+@container (min-width:560px){
+  .kv.full{display:block}
+  .kv.full .fcols{columns:2;column-gap:22px}
+  /* two toggles per row; a long label wraps instead of being cut */
+  .kv.full .chipset{grid-template-columns:1fr 1fr}
+  .kv.full .chipset .pchip{height:auto;min-height:var(--feature-height,42px);white-space:normal;line-height:1.2;padding:6px 10px;justify-content:flex-start;text-align:left}
+  .kv.full .chipset .pchip span.l{overflow:visible}
+  .kv.full .chipset .pchip:last-child:nth-child(odd){grid-column:1/-1}
+  .kv.full .prefs{align-items:stretch}
+}
+@container (min-width:860px){
+  .kv.full .fcols{columns:3}
+}
+/* ---------- standard, medium (560 to 860): the same idea in two body columns ---------- */
+@container (min-width:560px){
+  .kv.standard{grid-template-columns:minmax(220px,40%) repeat(2,minmax(0,1fr));grid-template-rows:auto auto auto auto;
+    column-gap:18px;row-gap:14px;padding:0 var(--pad) var(--pad)}
+  .kv.standard .kv-body{display:contents}
+  .kv.standard .kv-head{grid-column:1/-1;padding:12px 0 0}
+  .kv.standard .kv-stage{grid-column:1;grid-row:2/4;margin:0;align-self:start}
+  .kv.standard .blk.now{grid-column:2/4;grid-row:2}
+  .kv.standard .blk.sub-b{grid-column:2;grid-row:3}
+  .kv.standard .blk.sched-blk{grid-column:3;grid-row:3}
+  .kv.standard .blk.pref-b{grid-column:2/4;grid-row:4}
+  .kv.standard .blk.foot{grid-column:1;grid-row:4;align-self:end}
+}
+/* ---------- standard, wide: firmware and reboot sit under the window, so the left column has no hole.
+   Placement only; the DOM and focus order stay window, now playing, subscription, schedule, preferences, reboot. ---------- */
+@container (min-width:860px){
+  .kv.standard{grid-template-columns:minmax(250px,30%) repeat(3,minmax(0,1fr));grid-template-rows:auto auto 1fr auto;
+    column-gap:20px;row-gap:14px;padding:0 var(--pad) var(--pad)}
+  .kv.standard .kv-body{display:contents}
+  .kv.standard .kv-head{grid-column:1/-1;padding:12px 0 0}
+  .kv.standard .kv-stage{grid-column:1;grid-row:2/4;margin:0;align-self:start}
+  .kv.standard .blk.now{grid-column:2/5;grid-row:2}
+  .kv.standard .blk.sub-b{grid-column:2;grid-row:3/5}
+  .kv.standard .blk.sched-blk{grid-column:3;grid-row:3/5}
+  .kv.standard .blk.pref-b{grid-column:4;grid-row:3/5}
+  .kv.standard .blk.foot{grid-column:1;grid-row:4;align-self:end}
+}
+/* ---------- standard with the preferences editor open: the panel takes the whole body width ---------- */
+@container (min-width:560px){
+  .kv.standard.prefs-open .blk.pref-b{grid-column:2/-1;grid-row:4}
+  /* where and who on the left, how busy and how lively on the right; columns, so the rows do not couple */
+  .kv.standard.prefs-open .prefs{display:block;columns:2;column-gap:20px}
+  .kv.standard.prefs-open .prefs > *{break-inside:avoid;margin:0 0 12px}
+  .kv.standard.prefs-open .chipset{grid-template-columns:1fr 1fr}
+  .kv.standard.prefs-open .chipset .pchip{height:auto;min-height:var(--feature-height,42px);white-space:normal;line-height:1.2;padding:6px 10px;justify-content:flex-start;text-align:left}
+  .kv.standard.prefs-open .chipset .pchip span.l{overflow:visible}
+  .kv.standard.prefs-open .chipset .pchip:last-child:nth-child(odd){grid-column:1/-1}
+}
+@container (min-width:860px){
+  .kv.standard.prefs-open .blk.sched-blk{grid-column:3/5;grid-row:3}
+  .kv.standard.prefs-open .blk.sub-b{grid-row:3}
 }
 @media (prefers-reduced-motion:reduce){
   .kv *{animation:none!important;transition:none!important}
@@ -394,20 +475,14 @@ body.hagrid .kv-host::after{content:attr(data-grid);position:absolute;right:0;to
 <body>
 <header class="g-top"><div class="g-top-in">
   <div class="g-brand" id="brandmark"></div>
-  <nav class="g-nav" aria-label="Sections">
-    <a href="#review">Review</a><a href="#ideas">Ideas</a><a href="#themes">Themes</a><a href="#sizes">Sizes</a><a href="#states">States</a><a href="#play">Playground</a><a href="#icon">Icon</a><a href="#spec">Spec</a>
-  </nav>
+  <nav class="g-nav" aria-label="Sections"><a href="index.html">All themes</a><a href="kit-ha-dark.html">UI kit</a><a href="#ideas">How it works</a><a href="#variants">Variants</a><a href="#sizes">Widths</a><a href="#states">States</a><a href="#play">Playground</a><a href="#icon">Icon</a><a href="#spec">Spec</a></nav>
   <button class="g-themebtn" id="ggrid" aria-pressed="false">HA grid: off</button>
-  <button class="g-themebtn" id="gtheme" aria-label="Toggle gallery theme">Gallery: auto</button>
+  
 </div></header>
 
 <main class="g-wrap">
   <h1>Kevin card for Home Assistant, v6</h1>
-  <p class="lead">Revised against Home Assistant's own card rules: the 12-column sections grid (56 px rows, 8 px gutter), 42 px feature rows, the theme font, standard confirmation and more-info dialogs, and the tile anatomy for the compact layout. HA default dark is the base theme. The card is a window with KEVIN® on a shelf: drag the sun to the moon for standby, read the subscription from a ring, hold a button to reboot. Scenes are shown, not started: the card tells you what is playing now and where it came from. The card shows what is playing and lets you change the preferences from onboarding: where KEVIN® lives, who lives there, how busy and how lively it is.</p>
-
-  <h2 id="review">Review against Home Assistant practice</h2>
-  <p class="sec-sub">What earlier versions got wrong, what the HA rule is, and what v5 does. Sources at the end of the page.</p>
-  <div class="panel" style="overflow:auto"><table id="review-table" style="border-collapse:collapse;width:100%;font-size:13px"></table></div>
+  <p class="lead">Revised against Home Assistant's own card rules: the 12-column sections grid (56 px rows, 8 px gutter), 42 px feature rows, the theme font, standard confirmation and more-info dialogs,. HA default dark is the base theme. The card is a window with KEVIN® on a shelf: drag the sun to the moon for standby, read the subscription from a ring, hold a button to reboot. Scenes are shown, not started: the card tells you what is playing now and where it came from. The card shows what is playing and lets you change the preferences from onboarding: where KEVIN® lives, who lives there, how busy and how lively it is.</p>
 
   <h2 id="ideas">What is new</h2>
   <p class="sec-sub">Everything on the card is live. Try the strip, the presets and the reboot.</p>
@@ -418,35 +493,35 @@ body.hagrid .kv-host::after{content:attr(data-grid);position:absolute;right:0;to
       <div><b>Schedule you can read in a glance</b>Seven rows, one per day, with the Presence windows drawn as bars. Today is highlighted and the current hour is a thin line. Tap a day to see its hours. Edit stays in the Mitipi app, where the slot editor lives.</div>
       <div><b>Preferences behind a gear</b>Closed, the card shows one line: where KEVIN® lives, who is there, Occupancy and Energy. The gear opens the editor: environment select, lifestyle toggles (the list follows the environment), two sliders from 1 to 5. Changes save to desired.customization on release, with a "Saving" marker until the device reports back. The gear is disabled while the device is unavailable.</div>
       <div><b>Day and night is the switch</b>A 42 px feature row under the window. Drag the sun across, tap, or use the arrow keys. On is day, Standby is night, Unavailable is a grey unplugged window.</div>
-      <div><b>Sized for the sections grid</b>Each layout declares its size in HA grid units, measured, not guessed (toggle "HA grid" in the top bar to see the 56 px rows). Compact is a 6×1 tile, exactly 56 px. Standard takes a full 12-column section and 13 rows with preferences closed. Full is for a column_span 2 section, where it needs 7 rows.</div>
+      <div><b>Sized for the sections grid</b>One layout, measured rather than guessed (toggle "HA grid" in the top bar to see the 56 px rows): a 12-column section and 13 rows with the preferences closed, 9 columns at its narrowest. Inside that box it reflows by its own width.</div>
       <div><b>Standard dialogs</b>Reboot opens the HA confirmation dialog. Tapping the header or the tile body opens a more-info dialog with every attribute. Escape closes both.</div>
     </div></div>
   </div>
 
-  <h2 id="themes">1. Themes</h2>
-  <p class="sec-sub">HA default dark first. The window keeps its own day and night colours in every theme, so the card is recognisable as KEVIN® wherever it sits. Everything else follows the HA theme variables.</p>
-  <div class="grid g-themes" id="themes-grid"></div>
+  <h2 id="variants">Minimal, standard, full</h2>
+  <p class="sec-sub">Three variants, one data model. <b>Minimal</b> is the Home Assistant tile: one grid row, the icon circle switches On and Standby, the row opens more info, and a dot on the icon flags a subscription that needs attention. <b>Standard</b> is the everyday card. <b>Full</b> unfolds the detail standard keeps behind taps: hours per day on an hour ruler, the preferences editor open, and a device block with serial, firmware and reboot.</p>
+  <div id="variants-grid"></div>
 
-  <h2 id="sizes">2. Sizes and layouts</h2>
-  <p class="sec-sub"><code>layout: compact | standard | full</code>, each with its grid size (labels appear with "HA grid" on). Inside its box the card adapts to its own width: under 320 px one column, from 560 px the window on the left with blocks in pairs, from 860 px three columns. Widths below are real section widths: a cell is about 30 px with an 8 px gap, so 6 columns is 220 px, a 12-column section is 448 px, and a column_span 2 section is 904 px.</p>
+  <h2 id="sizes">Widths</h2>
+  <p class="sec-sub">One layout, which reflows by its own width: under 320 px everything stacks, from 560 px the window moves to the left and the blocks pair up, from 860 px they sit in three columns. The widths below are real section widths, where a cell is about 30 px with an 8 px gap: a 12-column section is 448 px and a column_span 2 section is 904 px.</p>
   <div class="row" id="sizes-row"></div>
 
-  <h2 id="states">3. States</h2>
-  <p class="sec-sub">Every device, subscription and schedule situation, all in HA default dark. Cards are live.</p>
+  <h2 id="states">States</h2>
+  <p class="sec-sub">Every device, subscription and schedule situation, all in HA default, dark. Cards are live.</p>
   <div class="grid g-states" id="states-grid"></div>
 
-  <h2 id="play">4. Playground</h2>
-  <p class="sec-sub">Change theme, layout, width and subscription, and use the card.</p>
+  <h2 id="play">Playground</h2>
+  <p class="sec-sub">Change theme, width and subscription, and use the card.</p>
   <div class="pg">
     <div class="panel" id="pg-ctl"></div>
     <div class="stage th-ha-dark" id="pg-stage" style="margin:0"><div id="pg-wrap" style="margin:0 auto;width:420px;max-width:100%"><div class="kv-host" id="pg-card"></div></div></div>
   </div>
 
-  <h2 id="icon">5. Icon</h2>
-  <p class="sec-sub">Same icon set as v1, in <code>icons/</code>. The mono glyph follows the theme text colour, and the three tints below match the three window states.</p>
+  <h2 id="icon">Icon</h2>
+  <p class="sec-sub">One icon set for every theme, in <code>icons/</code>. The mono glyph follows the theme text colour, and the three tints below match the three window states.</p>
   <div class="icons" id="icons"></div>
 
-  <h2 id="spec">6. Card spec</h2>
+  <h2 id="spec">Card spec</h2>
   <p class="sec-sub">How each attribute from the brief maps to the device shadow and to the card.</p>
   <div class="panel" style="overflow:auto"><table id="spec-table" style="border-collapse:collapse;width:100%;font-size:13px"></table></div>
 
@@ -463,6 +538,7 @@ body.hagrid .kv-host::after{content:attr(data-grid);position:absolute;right:0;to
 <div id="toasts" role="status" aria-live="polite"></div>
 
 <script>
+
 /* ---------------- helpers ---------------- */
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
 const addDays = n => { const d = new Date(TODAY); d.setDate(d.getDate()+n); return d; };
@@ -471,9 +547,9 @@ const fmtDate = d => `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}`;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const daysLeft = end => Math.round((end - TODAY) / 864e5);
 
-const KEVIN_PATH = 'M5.3 5.5h.2L7.1 17.5H3.8c-1.1 0-1.9-1.1-1.6-2.2l1.6-8.6c.1-.7.7-1.2 1.5-1.2ZM6.6 5.5h12.3c.7 0 1.3.5 1.5 1.2l2.2 8.6c.3 1.1-.5 2.2-1.6 2.2H8.2ZM9.9 15.8h2.8l-1.4-2.9Z';
+const KEVIN_PATH = 'M3.20 7.00L18.55 6.78Q20.35 6.80 20.90 8.45L22.42 15.15Q22.62 15.92 21.86 16.02L2.45 16.42Q1.58 16.46 1.52 15.72L1.50 15.32ZM3.51 6.91L6.36 16.12L5.74 16.40L2.89 7.19ZM11.20 10.55L12.92 13.99Q13.00 14.45 12.30 14.45L10.10 14.45Q9.40 14.45 9.48 13.99Z';
 const kevinGlyph = (a='') => `<svg ${a} viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="${KEVIN_PATH}"/></svg>`;
-document.getElementById('brandmark').innerHTML = kevinGlyph() + '<span>Kevin HA card v6</span>';
+document.getElementById('brandmark').innerHTML = kevinGlyph() + '<span>Kevin HA card · HA default, dark</span>';
 
 const IC = {
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
@@ -507,27 +583,17 @@ function layer(id, m){
     <path d="M0 140C80 126 150 136 230 130S350 124 400 136V150H0Z" fill="${P.h2}"/>
     <rect y="148" width="400" height="52" fill="${P.w}"/><rect y="140" width="400" height="8" fill="${P.sh}"/></svg>`;
 }
-/* KEVIN device, drawn in a 200 x 120 box (grey fabric wedge, white side, triangle logo) */
-function device(id){
-  return `<defs>
-    <linearGradient id="${id}f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A9AFB2"/><stop offset="1" stop-color="#868C90"/></linearGradient>
-    <linearGradient id="${id}w" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#D9DDE0"/></linearGradient>
-    <linearGradient id="${id}l" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#E0348A"/><stop offset="1" stop-color="#5C8BC1"/></linearGradient>
-    <filter id="${id}t"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3"/><feColorMatrix values="0 0 0 0 .3 0 0 0 0 .33 0 0 0 0 .35 0 0 0 .35 0"/><feComposite in2="SourceGraphic" operator="in"/></filter></defs>
-    <g stroke-linejoin="round" stroke-width="5">
-      <path d="M40 18 24 84l34 9-11-75Z" fill="url(#${id}w)" stroke="url(#${id}w)"/>
-      <path d="M47 18h110l16 60q2 5-3 8L58 93Z" fill="url(#${id}f)" stroke="url(#${id}f)"/></g>
-    <path d="M47 18h110l16 60q2 5-3 8L58 93Z" fill="#000" filter="url(#${id}t)" opacity=".5"/>
-    <path d="M67 81l6-12 6 12Z" fill="url(#${id}l)" stroke="url(#${id}l)" stroke-width="3" stroke-linejoin="round"/>`;
-}
+/* The window shows the real KEVIN: the product photo, cut out by build-icons.py (2:1). */
+/* Embedded so the page works on its own; icons/kevin-photo-scene.png is the same image for a bundle. */
+const PHOTO = 'data:image/webp;base64,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';
 function foreground(id){
   return `<svg class="fg" viewBox="0 0 400 200" preserveAspectRatio="xMaxYMax meet" role="img" aria-label="KEVIN on a shelf">
-    <ellipse cx="288" cy="142" rx="72" ry="5" fill="#000" opacity=".18"/>
-    ${[0,1,2].map(i=>`<ellipse class="arc" style="animation-delay:${i*.8}s" cx="288" cy="104" rx="62" ry="40"/>`).join('')}
-    <g transform="translate(206 66) scale(.82)">${device(id)}</g></svg>`;
+    <ellipse cx="282" cy="142" rx="74" ry="5" fill="#000" opacity=".2"/>
+    ${[0,1,2].map(i=>`<ellipse class="arc" style="animation-delay:${i*.8}s" cx="282" cy="106" rx="64" ry="40"/>`).join('')}
+    <image href="${PHOTO}" x="210" y="71" width="144" height="72" preserveAspectRatio="xMidYMax meet"/></svg>`;
 }
 function miniFg(id){
-  return `<svg class="fg" viewBox="80 0 240 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g transform="translate(118 46) scale(1.15)">${device(id)}</g></svg>`;
+  return `<svg class="fg" viewBox="80 0 240 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><image href="${PHOTO}" x="110" y="50" width="180" height="90"/></svg>`;
 }
 const wave = (name, playing) => {
   let h = 0; for (const ch of name) h = (h*31 + ch.charCodeAt(0)) >>> 0;
@@ -581,11 +647,15 @@ function nextSlot(sched){
 const dayName = (k,i) => k === 0 ? 'Today' : k === 1 ? 'Tomorrow' : DOWL[i];
 
 const cards = {};
-const GRID = {compact:'columns 6 · rows 1 · min 3×1 · max rows 1', standard:'columns 12 · rows 13 (18 with preferences open) · min columns 9', full:'columns full · rows 7 on a column_span 2 section (12 open)'};
+const GRID = {
+  minimal:'columns 6 · rows 1 · min 3×1 · max rows 1',
+  standard:'columns 12 · rows 13, 6 on column_span 2 · min columns 9',
+  full:'columns 12 · rows 21, 9 on column_span 2 · min columns 9'
+};
 function mount(el, init, opts={}){
   const id = 'c' + (++uidN);
   cards[id] = {s:structuredClone(init), o:opts, el, prev:{}};
-  el.dataset.grid = GRID[opts.layout || 'standard'];
+  el.dataset.grid = GRID[opts.variant || 'standard'];
   render(id); return id;
 }
 
@@ -601,7 +671,8 @@ function subInfo(sub){
 
 /* ---------------- template ---------------- */
 function tpl(id, s, o){
-  const layout = o.layout || 'standard';
+  const variant = o.variant || 'standard';
+  const full = variant === 'full';
   const off = !s.connected, busy = s.busy;
   const target = busy === 'waking' ? 'on' : busy === 'sleeping' ? 'standby' : (s.mode === 'ON' ? 'on' : 'standby');
   const vis = off ? 'off' : target;
@@ -610,16 +681,24 @@ function tpl(id, s, o){
   const playing = !off && s.mode === 'ON' && !busy && !!s.current;
   const lid = 'u' + id;
 
-  /* ---- compact: HA tile anatomy. 36 px icon circle = tap action (toggle), body tap = more-info ---- */
-  if (layout === 'compact'){
-    const state = busy === 'rebooting' ? 'Rebooting…' : busy === 'waking' ? 'Waking up…' : busy === 'sleeping' ? 'Going to sleep…'
-      : off ? `Unavailable · ${esc(s.lastSeen)}` : (s.mode === 'ON' ? (s.current ? `On · ${esc(s.current.activity)}` : 'On') : 'Standby');
-    const warn = !off && (sub.key === 'soon' || sub.key === 'expired');
-    const dlg = s.dialog === 'info' ? moreInfo(id, s) : '';
-    return `<div class="kv compact" data-id="${id}">${dlg}
-      <button class="tile-ic ${vis}" data-act="toggle" aria-label="${vis==='on'?'Put on standby':'Wake up'}" ${off||busy?'disabled':''}>${kevinGlyph()}</button>
-      <div class="mid" data-act="info" role="button" tabindex="0" aria-label="More info for ${esc(s.name)}"><div class="nm">${esc(s.name)}</div><div class="st ${warn?'warn':''}">${warn?(sub.key==='expired'?'Subscription expired':'Subscription ends in '+sub.d+' d'):state}</div></div>
-      ${busy?'<span class="spin" style="color:var(--secondary-text-color)"></span>':''}
+  /* ---- minimal: the HA tile. Icon circle toggles, the row opens more info. ---- */
+  if (variant === 'minimal'){
+    const nx = nextSlot(s.schedules);
+    const state = busy === 'rebooting' ? 'Rebooting<span class="dots"></span>'
+      : busy === 'waking' ? 'Waking up<span class="dots"></span>'
+      : busy === 'sleeping' ? 'Going to sleep<span class="dots"></span>'
+      : off ? `Unavailable · last seen ${esc(s.lastSeen)}`
+      : s.mode === 'ON' ? (s.current ? `<b>On</b> · ${esc(s.current.activity)}` : '<b>On</b>')
+      : (nx ? `<b>Standby</b> · Presence ${nx.k === 0 ? 'at ' + hm(nx.f) : dayName(nx.k, nx.i).toLowerCase() + ' at ' + hm(nx.f)}` : '<b>Standby</b>');
+    const flag = off ? '' : sub.key === 'expired' ? 'err' : (sub.key === 'soon' || sub.key === 'trial') ? 'warn' : '';
+    const flagTxt = flag === 'err' ? 'Subscription expired' : flag === 'warn' ? (sub.key === 'trial' ? 'Trial, ' + sub.d + ' days left' : 'Subscription ends in ' + sub.d + ' days') : '';
+    const plain = state.replace(/<[^>]*>/g, '');
+    return `<div class="kv minimal" data-id="${id}">${s.dialog === 'info' ? moreInfo(id, s) : ''}
+      <button class="tile-ic ${vis}" data-act="toggle" ${off || busy ? 'disabled' : ''}
+        aria-label="${esc(s.name)}, ${vis === 'on' ? 'on. Put on standby' : vis === 'standby' ? 'on standby. Wake up' : 'unavailable'}">
+        ${kevinGlyph()}${busy ? '<span class="busy"></span>' : ''}${flag ? `<span class="tile-badge ${flag}"></span>` : ''}</button>
+      <button class="mid" data-act="info" aria-label="${esc(s.name)}: ${esc(plain)}${flagTxt ? '. ' + flagTxt : ''}. Open more info">
+        <div class="nm">${esc(s.name)}</div><div class="st" title="${esc(plain)}">${state}</div></button>
     </div>`;
   }
 
@@ -641,7 +720,7 @@ function tpl(id, s, o){
   if (sub.key === 'none'){
     ring = `<div class="ring"><svg viewBox="0 0 88 88" aria-hidden="true"><circle class="bg none" cx="44" cy="44" r="${R}" stroke-dasharray="3 7"/></svg><div class="mid"><span class="big" style="font-size:18px">Basic</span></div></div>`;
   } else {
-    const stroke = sub.tone === 'err' ? 'var(--kv-bad)' : sub.tone === 'warn' ? '#FFAD00' : `url(#${lid}r)`;
+    const stroke = sub.tone === 'err' ? 'var(--kv-bad)' : sub.tone === 'warn' ? 'var(--kv-onink)' : `url(#${lid}r)`;
     const off2 = C * (1 - sub.frac);
     ring = `<div class="ring" role="img" aria-label="${sub.key==='expired'?'Subscription expired':sub.d+' days left'}"><svg viewBox="0 0 88 88" aria-hidden="true"><defs><linearGradient id="${lid}r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E0348A"/><stop offset="1" stop-color="#5C8BC1"/></linearGradient></defs>
       <circle class="bg" cx="44" cy="44" r="${R}"/>
@@ -673,12 +752,14 @@ function tpl(id, s, o){
     const bars = slots.map(([f,t]) => `<b style="left:${(f/24*100).toFixed(1)}%;width:${((t-f)/24*100).toFixed(1)}%" title="${hm(f)}–${hm(t)}"></b>`).join('');
     const night = `<span class="ni" style="left:0;width:${(7.5/24*100).toFixed(1)}%"></span><span class="ni" style="left:${(21.5/24*100).toFixed(1)}%;width:${(2.5/24*100).toFixed(1)}%"></span>`;
     const nowLine = today ? `<span class="now" style="left:${(NOW_H/24*100).toFixed(1)}%"></span>` : '';
-    return `<span class="d ${today?'today':''}" aria-hidden="true">${d}</span><button class="r ${today?'today':''} ${s.openDay===i?'open':''}" data-act="day" data-i="${i}" aria-label="${DOWL[i]}: ${slots.length ? slots.map(([f,t])=>hm(f)+' to '+hm(t)).join(', ') : 'no Presence'}" aria-expanded="${s.openDay===i}">${night}${bars}${nowLine}</button>`;
+    const dayH = slots.reduce((a,[f,t]) => a + (t-f), 0);
+    return `<span class="d ${today?'today':''}" aria-hidden="true">${d}</span><button class="r ${today?'today':''} ${s.openDay===i?'open':''}" data-act="day" data-i="${i}" aria-label="${DOWL[i]}: ${slots.length ? slots.map(([f,t])=>hm(f)+' to '+hm(t)).join(', ') : 'no Presence'}" aria-expanded="${s.openDay===i}">${night}${bars}${nowLine}</button>${full ? `<span class="dayhrs">${dayH ? dayH.toFixed(dayH%1?1:0) + ' h' : '—'}</span>` : ''}`;
   }).join('');
+  const ruler = full ? `<span aria-hidden="true"></span><div class="ruler" aria-hidden="true">${[0,6,12,18,24].map(h => `<span style="left:${(h/24*100).toFixed(1)}%">${String(h).padStart(2,'0')}</span>`).join('')}</div><span></span>` : '';
   const total = s.schedules.reduce((a, d) => a + d.reduce((b, [f,t]) => b + (t-f), 0), 0);
   const od = s.openDay;
   const detail = od === null || od === undefined ? '' : `<b>${DOWL[od]}</b>: ${(s.schedules[od]||[]).length ? s.schedules[od].map(([f,t])=>hm(f)+'–'+hm(t)).join(', ') : 'no Presence'}`;
-  const schedBlock = `<div class="blk"><p class="sec-l">Schedule</p><div class="sched">${rows}</div>
+  const schedBlock = `<div class="blk sched-blk"><p class="sec-l">Schedule</p><div class="sched">${rows}${ruler}</div>
     <div class="sched-detail" aria-live="polite">${detail}</div>
     <div class="sched-foot"><span class="hrs"><b>${total.toFixed(total%1?1:0)} h</b> of Presence a week</span></div></div>`;
 
@@ -697,23 +778,26 @@ function tpl(id, s, o){
   const saving = s.saving ? `<span class="saving"><span class="spin"></span>Saving</span>` : '';
   const tagNames = s.prefs.tags.map(k => (env.tags.find(t => t[0] === k) || [k,k])[1]);
   const summary = `${esc(env.name)}${tagNames.length ? ' · ' + esc(tagNames.join(', ')) : ''} · Occupancy ${s.prefs.occupancy} · Energy ${s.prefs.energy}`;
-  const editor = s.prefsOpen ? `<div class="prefs" id="${id}pe">${envSel}<div class="chipset">${tagBtns}</div>${slider('occupancy','Occupancy',env.occ)}${slider('energy','Energy',env.energy)}</div>` : '';
-  const prefBlock = `<div class="blk">
-    <div class="pref-row ${s.prefsOpen?'open':''}">
-      <div class="pref-t"><p class="sec-l" style="margin:0">Preferences ${saving}</p><div class="pref-sum" ${s.prefsOpen?'hidden':''}>${summary}</div></div>
-      <button class="gear" data-act="prefs" aria-expanded="${!!s.prefsOpen}" aria-controls="${id}pe" aria-label="${s.prefsOpen?'Close preferences':'Edit preferences'}" ${pdis&&!s.prefsOpen?'disabled':''}>${s.prefsOpen?ic('x'):ic('gear')}</button>
+  const prefsOpen = s.prefsOpen || full;
+  const editor = prefsOpen ? `<div class="prefs" id="${id}pe">${envSel}<div class="chipset">${tagBtns}</div>${slider('occupancy','Occupancy',env.occ)}${slider('energy','Energy',env.energy)}</div>` : '';
+  const prefBlock = `<div class="blk pref-b">
+    <div class="pref-row ${prefsOpen?'open':''}">
+      <div class="pref-t"><p class="sec-l" style="margin:0">Preferences ${saving}</p><div class="pref-sum" ${prefsOpen?'hidden':''}>${summary}</div></div>
+      ${full ? '' : `<button class="gear" data-act="prefs" aria-expanded="${!!s.prefsOpen}" aria-controls="${id}pe" aria-label="${s.prefsOpen?'Close preferences':'Edit preferences'}" ${pdis&&!s.prefsOpen?'disabled':''}>${s.prefsOpen?ic('x'):ic('gear')}</button>`}
     </div>${editor}</div>`;
 
   /* ---- footer ---- */
   const rebootBtn = `<button class="fbtn" data-act="reboot" ${dis?'disabled':''}>${ic('power')}Reboot</button>`;
-  const foot = `<div class="blk foot"><div class="fw"><span>Firmware</span><b>v${esc(s.fw)}</b></div>${rebootBtn}</div>`;
+  const foot = full
+    ? `<div class="blk dev"><p class="sec-l">Device</p>
+        <dl class="devl"><dt>Serial</dt><dd>${esc(s.serial)}</dd><dt>Firmware</dt><dd>v${esc(s.fw)}</dd><dt>${off ? 'Last seen' : 'State'}</dt><dd>${off ? esc(s.lastSeen) : (s.mode === 'ON' ? 'On' : 'Standby')}</dd></dl>
+        ${rebootBtn}</div>`
+    : `<div class="blk foot"><div class="fw"><span>Firmware</span><b>v${esc(s.fw)}</b></div>${rebootBtn}</div>`;
 
   const dlg = s.dialog === 'reboot' ? `<div class="dlg-scrim" data-act="cancel"><div class="dlg" role="alertdialog" aria-modal="true" aria-labelledby="${id}dt" data-stop><h3 id="${id}dt">Reboot ${esc(s.name)}?</h3><p>KEVIN® goes offline for about a minute, then returns to its current mode.</p><div class="acts"><button data-act="cancel">Cancel</button><button class="danger" data-act="reboot-yes" autofocus>Reboot</button></div></div></div>`
     : s.dialog === 'info' ? moreInfo(id, s) : '';
-  return `<div class="kv ${layout} ${playing?'playing':''}" data-id="${id}">
-    ${dlg}
-    <div class="kv-head" data-act="info" role="button" tabindex="0" aria-label="More info for ${esc(s.name)}"><div class="kv-word">${kevinGlyph()}<span class="grad">KEVIN</span><sup>®</sup></div>${live}</div>
-    <div class="kv-stage ${playing?'playing':''}">
+  const head = `<div class="kv-head" data-act="info" role="button" tabindex="0" aria-label="More info for ${esc(s.name)}"><div class="kv-word">${kevinGlyph()}<span class="grad">KEVIN</span><sup>®</sup></div>${live}</div>`;
+  const stageHtml = `<div class="kv-stage ${playing?'playing':''}">
       <div class="scene" data-anim="scene" data-v="${vis}">${layer(lid,'day')}${layer(lid,'night')}${layer(lid,'off')}${foreground(lid)}
         <div class="scene-txt"><div class="kv-name">${esc(s.name)}</div><div class="kv-serial">${esc(s.serial)}</div></div></div>
       <div class="strip" data-anim="strip" data-v="${vis}">
@@ -722,10 +806,23 @@ function tpl(id, s, o){
           <span class="thumb" data-anim="thumb" data-v="${vis}">${thumbIcon}</span></div>
         <span class="state" aria-live="polite">${stateTxt}</span>
       </div>
-    </div>
+    </div>`;
+  const subBlock = `<div class="blk sub-b"><p class="sec-l">Subscription</p><div class="sub">${ring}<div class="subtxt">${subTxt}</div></div></div>`;
+
+  /* Full flows its blocks through balanced columns (CSS multi-column), so a wide section
+     has no holes and the reading and focus order stays: window, now playing, subscription,
+     device, schedule, preferences. */
+  if (full){
+    return `<div class="kv full ${playing?'playing':''}" data-id="${id}">
+    ${dlg}${head}
+    <div class="fcols">${stageHtml}${nowBlock}${subBlock}${foot}${schedBlock}${prefBlock}</div></div>`;
+  }
+
+  return `<div class="kv ${variant} ${playing?'playing':''} ${s.prefsOpen?'prefs-open':''}" data-id="${id}">
+    ${dlg}${head}${stageHtml}
     <div class="kv-body">
       ${nowBlock}
-      <div class="blk"><p class="sec-l">Subscription</p><div class="sub">${ring}<div class="subtxt">${subTxt}</div></div></div>
+      ${subBlock}
       ${schedBlock}
       ${prefBlock}
       ${foot}
@@ -850,39 +947,49 @@ document.addEventListener('keydown', e => {
 
 
 /* ---------------- gallery ---------------- */
-const THEMES = [
-  ['th-ha-dark','HA default, dark'],['th-ha-light','HA default, light'],
-  ['th-kevin-light','Kevin light'],['th-kevin-dark','Kevin dark'],['th-porcelain','Kevin Porcelain 2026']
-];
+const T = 'th-ha-dark';
+const THEMES = [[T, 'HA default, dark']];
 function stage(cls, width, inner, caption){
   return `<div><div class="stage ${cls}"><div style="width:${width};max-width:100%;margin:0 auto">${inner}</div></div>${caption?`<div class="cap">${caption}</div>`:''}</div>`;
 }
-mount(document.getElementById('hero'), base(), {layout:'standard'});
+mount(document.getElementById('hero'), base());
 
-const themesGrid = document.getElementById('themes-grid');
-THEMES.forEach(([cls,label],i) => {
-  const w = document.createElement('div');
-  w.innerHTML = stage(cls,'100%',`<div class="kv-host" id="th${i}"></div>`,`<b>${label}</b>`);
-  themesGrid.appendChild(w.firstChild);
-  mount(document.getElementById('th'+i), base(i===1?{mode:'STAND_BY'}:{}), {layout:'standard'});
-});
+
+const T_V = (typeof T !== 'undefined') ? T : 'th-ha-dark';
+const VARIANTS = [
+  {v:'minimal', w:220, cap:'Minimal · 6 columns, 1 row (56 px)'},
+  {v:'minimal', w:220, cap:'Minimal · standby, subscription ends soon', s:{mode:'STAND_BY', name:'Office', sub:{plan:'Plus', status:'active', start:addDays(-351), end:addDays(7)}}},
+  {v:'minimal', w:220, cap:'Minimal · unavailable', s:{connected:false, name:'Davos chalet'}},
+  {v:'minimal', w:448, cap:'Minimal · 12 columns, long name', s:{name:'Reception, second floor, east wing'}},
+  {v:'standard', w:448, cap:'Standard · 12 columns, 13 rows'},
+  {v:'full', w:448, cap:'Full · 12 columns, 21 rows'},
+  {v:'full', w:904, cap:'Full · a column_span 2 section, 9 rows'}
+];
+const vGrid = document.getElementById('variants-grid');
+if (vGrid){
+  vGrid.innerHTML = '<div class="row" id="v-min" style="margin-bottom:22px"></div><div class="row" id="v-big"></div>';
+  VARIANTS.forEach((x, i) => {
+    const w = document.createElement('div'); w.style.maxWidth = '100%';
+    w.innerHTML = stage(T_V, x.w + 'px', `<div class="kv-host" id="vv${i}"></div>`, `<b>${x.cap}</b>`);
+    document.getElementById(x.v === 'minimal' ? 'v-min' : 'v-big').appendChild(w);
+    mount(document.getElementById('vv' + i), base(x.s || {}), {variant:x.v});
+  });
+}
 
 const sizes = [
-  {lay:'compact', w:220, cls:'th-ha-dark', cap:'compact tile, 6 columns (220 px), 1 row'},
-  {lay:'compact', w:220, cls:'th-ha-dark', cap:'compact tile, 6 columns, long name, standby', s:{name:'Warehouse hall with a very long name', mode:'STAND_BY'}},
-  {lay:'compact', w:448, cls:'th-ha-dark', cap:'compact tile, 12 columns (448 px), 1 row'},
-  {lay:'standard', w:334, cls:'th-ha-dark', cap:'standard, 9 columns (334 px, the minimum)'},
-  {lay:'standard', w:448, cls:'th-ha-dark', cap:'standard, 12 columns (448 px), 13 rows'},
-  {lay:'full', w:448, cls:'th-ha-dark', cap:'full, 12 columns (448 px)'},
-  {lay:'standard', w:904, cls:'th-ha-dark', cap:'standard on a column_span 2 section (904 px)', s:{mode:'STAND_BY'}},
-  {lay:'full', w:904, cls:'th-ha-dark', cap:'full on a column_span 2 section (904 px), 7 rows'}
+  {w:290, cls:T, cap:'290 px: under 320 the card folds into one column'},
+  {w:334, cls:T, cap:'334 px: 9 columns, the narrowest the card declares'},
+  {w:448, cls:T, cap:'448 px: a 12-column section, 13 rows. The size it is built for'},
+  {w:448, cls:T, cap:'448 px with a long name and no schedule', s:{name:'Reception, second floor, east wing', schedules:[[],[],[],[],[],[],[]]}},
+  {w:660, cls:T, cap:'660 px: from 560 the window moves left and the blocks pair up', s:{mode:'STAND_BY'}},
+  {w:904, cls:T, cap:'904 px: a column_span 2 section, three blocks per row'}
 ];
 const sizesRow = document.getElementById('sizes-row');
 sizes.forEach((x,i) => {
   const w = document.createElement('div'); w.style.maxWidth = '100%';
   w.innerHTML = stage(x.cls, x.w+'px', `<div class="kv-host" id="sz${i}"></div>`, `<b>${x.cap}</b>`);
   sizesRow.appendChild(w);
-  mount(document.getElementById('sz'+i), base(x.s||{}), {layout:x.lay});
+  mount(document.getElementById('sz'+i), base(x.s||{}));
 });
 
 const STATES = [
@@ -899,13 +1006,13 @@ const STATES = [
 const statesGrid = document.getElementById('states-grid');
 STATES.forEach(([label,st],i) => {
   const w = document.createElement('div');
-  w.innerHTML = stage('th-ha-dark','100%',`<div class="kv-host" id="st${i}"></div>`,`<b>${label}</b>`);
+  w.innerHTML = stage(T,'100%',`<div class="kv-host" id="st${i}"></div>`,`<b>${label}</b>`);
   statesGrid.appendChild(w.firstChild);
-  mount(document.getElementById('st'+i), st, {layout:'standard'});
+  mount(document.getElementById('st'+i), st);
 });
 
 /* playground */
-const pg = {theme:'th-ha-dark', layout:'standard', width:420, sub:'active'};
+const pg = {theme:T, variant:'standard', width:448, sub:'active'};
 let pgId = null;
 const SUBS = {
   active:()=>({plan:'Max',status:'active',start:addDays(-207),end:addDays(158)}),
@@ -917,7 +1024,7 @@ const SUBS = {
 function pgMount(keep){
   const prev = keep && pgId ? cards[pgId].s : null;
   const s = prev ? Object.assign(prev,{sub:SUBS[pg.sub](), busy:null}) : base({sub:SUBS[pg.sub]()});
-  pgId = mount(document.getElementById('pg-card'), s, {layout:pg.layout});
+  pgId = mount(document.getElementById('pg-card'), s, {variant:pg.variant});
   document.getElementById('pg-stage').className = 'stage ' + pg.theme;
   document.getElementById('pg-wrap').style.width = pg.width + 'px';
 }
@@ -926,8 +1033,7 @@ function ctl(label, key, opts){
 }
 function pgPanel(){
   document.getElementById('pg-ctl').innerHTML = `<h3>Controls</h3>
-    ${ctl('Theme','theme',THEMES)}
-    ${ctl('Layout','layout',[['compact','compact'],['standard','standard'],['full','full']])}
+    ${ctl('Variant','variant',[['minimal','Minimal'],['standard','Standard'],['full','Full']])}
     <div class="ctl"><label class="l" for="pgw">Width: <b id="pgwv">${pg.width}</b> px</label><input id="pgw" type="range" min="200" max="1100" step="1" value="${pg.width}"></div>
     ${ctl('Subscription','sub',[['active','Active'],['soon','Expires soon'],['trial','Trial'],['expired','Expired'],['none','None']])}
     <div class="ctl"><span class="l">Device</span><div class="opts"><button id="pgoff">Toggle offline</button><button id="pgnosched">Clear schedule</button><button id="pgenv">Cycle environment</button><button id="pgprefs">Open preferences</button></div></div>`;
@@ -949,11 +1055,13 @@ document.getElementById('pg-ctl').addEventListener('input', e => {
 /* icons */
 const g = (w) => kevinGlyph(`width="${w}" height="${w}"`);
 document.getElementById('icons').innerHTML = `
- <div class="icocard"><div class="box" style="background:#fff;color:#212121;border:1px solid var(--g-line)">${g(64)}${g(24)}</div><h4>kevin-mono.svg, light</h4><p>24 px grid, one path, currentColor</p></div>
- <div class="icocard"><div class="box" style="background:#1C1C1C;color:#E1E1E1">${g(64)}${g(24)}</div><h4>kevin-mono.svg, dark</h4><p>Follows the theme text colour</p></div>
- <div class="icocard"><div class="box" style="background:#F1F5F6;gap:18px"><span class="ent" style="background:#FFE3A0;color:#2B4E69">${g(22)}</span><span class="ent" style="background:#2B4E69;color:#fff">${g(22)}</span><span class="ent" style="background:#BABABA;color:#2E3133">${g(22)}</span></div><h4>As entity icon</h4><p>Day, night and offline, same as the window</p></div>
- <div class="icocard"><div class="box" style="background:#F1F5F6"><img src="icons/kevin-color.svg" width="96" height="96" alt="Kevin colour icon"></div><h4>kevin-color.svg</h4><p>The device, for brand images</p></div>
- <div class="icocard"><div class="box" style="background:#F1F5F6"><img src="icons/kevin-tile.svg" width="96" height="96" alt="Kevin tile icon"></div><h4>kevin-tile.svg</h4><p>Tile on Mitipi navy, 256 and 512 px</p></div>`;
+ <div class="icocard"><div class="box" style="background:var(--ha-card-background);color:var(--primary-text-color);border:1px solid var(--divider-color)">${g(64)}${g(24)}</div><h4>kevin-mono.svg</h4><p>Traced from the product photo: the wedge, the end panel and the mark. One path, 24 px grid, currentColor</p></div>
+ <div class="icocard"><div class="box" style="background:var(--kv-surface);color:var(--secondary-text-color)">${g(64)}${g(24)}</div><h4>On a feature surface</h4><p>Secondary text colour, as in the header wordmark</p></div>
+ <div class="icocard"><div class="box" style="background:var(--primary-color);color:var(--text-primary-color)">${g(64)}${g(24)}</div><h4>On the primary colour</h4><p>For a filled tile icon or an active feature</p></div>
+ <div class="icocard"><div class="box" style="background:var(--kv-surface);gap:18px"><span class="ent" style="background:rgba(255,173,0,.2);color:var(--state-active-color)">${g(22)}</span><span class="ent" style="background:rgba(75,141,197,.2);color:#4B8DC5">${g(22)}</span><span class="ent" style="background:rgba(189,189,189,.2);color:var(--state-unavailable-color)">${g(22)}</span></div><h4>As entity icon</h4><p>On, Standby, Unavailable, the tile circle tints</p></div>
+ <div class="icocard"><div class="box" style="background:var(--kv-surface)"><img src="icons/kevin-photo-256.png" width="120" alt="KEVIN, product photo"></div><h4>kevin-photo-256 / 512.png</h4><p>The real device, cut out of its background. For the integration's brand image</p></div>
+ <div class="icocard"><div class="box" style="background:var(--kv-surface)"><img src="icons/kevin-color.svg" width="96" height="96" alt="Kevin colour icon"></div><h4>kevin-color.svg</h4><p>Flat two-tone version of the traced outline</p></div>
+ <div class="icocard"><div class="box" style="background:var(--kv-surface)"><img src="icons/kevin-tile.svg" width="96" height="96" alt="Kevin tile icon"></div><h4>kevin-tile.svg</h4><p>Tile on Mitipi navy, 256 and 512 px</p></div>`;
 
 /* spec */
 const SPEC = [
@@ -968,32 +1076,15 @@ const SPEC = [
   ['9','Scenes','Read-only "Now playing": current activity with live waveform, its group, Adaptive or Basic, minutes running. On standby: next Presence window from the schedule','reported.activity.currentActivity'],
   ['10','Schedule','Seven day rows with Presence windows as bars, night hours hatched, today marked, current time as an amber line. Tap a day for its hours. Weekly total. Editing stays in the app','reported.schedules'],
   ['11','Preferences','Closed: one summary line and a 36 px gear. Open: environment as a select feature, lifestyle tags as toggle features two per row, Occupancy and Energy as 42 px slider features with the environment\'s own end labels. Saved on release, "Saving" until reported matches','desired.customization via setDeviceCustomization: environment, tags, occupancy, energy'],
-  ['12','Grid options (measured, preferences closed)','compact: columns 6, rows 1, min_columns 3, max_rows 1 · standard: columns 12, rows 13, min_columns 9 (18 with the editor open) · full: columns full, rows 7 on a column_span 2 section (12 open) · getCardSize: 1 / 16 / 9. The editor grows the card; in HA the section reflows, so the closed size is the declared one','getGridOptions / getCardSize'],
-  ['13','Theme variables','--ha-card-background, --ha-card-border-width, --ha-card-border-color, --ha-card-border-radius, --ha-card-box-shadow, --ha-font-family-body, --primary-text-color, --secondary-text-color, --divider-color, --primary-color, --state-active-color, --state-unavailable-color, --feature-height, --feature-border-radius, --feature-button-spacing','HA theme'],
+  ['12','Variants and grid options','minimal: columns 6, rows 1, min 3 × 1, max_rows 1 · standard: columns 12, rows 13, or 6 on a column_span 2 section · full: columns 12, rows 21, or 9 on a column_span 2 section','variant: minimal | standard | full · getGridOptions / getCardSize'],
+  ['13a','Minimal tile','36 px icon circle tinted by state toggles On and Standby (44 px touch target); the row is one button that opens more info; state line composes mode and what is playing; a dot badge on the icon flags a trial, an ending or an expired subscription; a ring on the icon while the mode changes','tap_action: more-info · icon_tap_action: toggle'],
+  ['13b','Full card','Everything standard shows, plus: hours per day and an hour ruler on the schedule, the preferences editor always open (no gear), a device block with serial, firmware, state and reboot','same shadow fields'],
+  ['13','Theme variables','--ha-card-background, --ha-card-border-width, --ha-card-border-color, --ha-card-border-radius, --ha-card-box-shadow, --ha-font-family-body, --primary-text-color, --secondary-text-color, --divider-color, --primary-color, --state-active-color, --feature-height, --feature-border-radius, --feature-button-spacing','HA theme'],
   ['14','Actions','Header or tile body tap: more-info. Tile icon: toggle. Reboot: confirmation dialog, then service call','tap_action: more-info · icon_tap_action: toggle · confirmation']
 ];
 document.getElementById('spec-table').innerHTML = `<thead><tr>${['#','Attribute','In the card','Source'].map(h=>`<th style="text-align:left;padding:8px 10px;font-size:12px;color:var(--g-muted);border-bottom:1px solid var(--g-line)">${h}</th>`).join('')}</tr></thead><tbody>${SPEC.map(r=>`<tr>${r.map((c,i)=>`<td style="padding:9px 10px;border-bottom:1px solid var(--g-line);vertical-align:top;${i===3?'font-size:12px;color:var(--g-muted)':''}${i===1?'font-weight:700':''}">${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody>`;
 
 document.getElementById('ggrid').addEventListener('click', e => { const on = document.body.classList.toggle('hagrid'); e.currentTarget.textContent = 'HA grid: ' + (on ? 'on' : 'off'); e.currentTarget.setAttribute('aria-pressed', on); });
-/* review table */
-const REVIEW = [
-  ['Grid sizing','No grid awareness; height was whatever the content made it','Sections use a 12-column grid, 56 px rows, 8 px gutter. Cards declare getGridOptions with columns in multiples of 3 and getCardSize in 50 px units','Each layout declares rows and columns from measured heights (see Spec). The tile is exactly 56 px. Toggle "HA grid" to see the rhythm'],
-  ['Controls','Custom 52 px strip, 34 px chips, hold-to-reboot button','Controls are "features": 42 px tall, 12 px radius, 12 px between buttons, full width, two per row inline','The day-night strip, the preset buttons and the reboot button are all 42 px feature rows with the feature variables'],
-  ['Destructive action','Press and hold for 1.2 s, no dialog','HA uses a confirmation dialog (the confirmation option on actions)','Reboot opens an HA-style confirmation dialog with Cancel and Reboot'],
-  ['Typography','Inter hard-coded, weights 700 and 800','Cards inherit the theme font (--ha-font-family-body, Roboto by default) and use 400 and 500 weights','Font comes from the theme. HA themes render Roboto, Kevin themes Inter. Headline weights reduced to 500'],
-  ['Card chrome','1 px border plus a drop shadow','--ha-card-background, --ha-card-border-width, --ha-card-border-color, --ha-card-border-radius, --ha-card-box-shadow (none in current themes)','All five variables used with HA defaults; no shadow'],
-  ['Tap behaviour','Nothing opened more-info','Tapping a card opens more-info; the icon circle on a tile signals the tap action','Header and tile body open a more-info dialog with every attribute. The tile icon circle toggles the mode'],
-  ['Compact layout','Mini window plus a day-night pill','Tile anatomy: 36 px icon circle, name and state side by side, 56 px row','Compact is a true tile: circle, name, state, one row high'],
-  ['State wording','"Offline"','HA states an unreachable entity as "unavailable" and colours it with --state-unavailable-color','Header, strip and tile say Unavailable; the offline tint maps to the unavailable token'],
-  ['Clutter','"Edit in the Mitipi app" text that did nothing','Interactive elements should look clickable, and only interactive elements should','Removed. The schedule shows hours of Presence a week'],
-  ['Presets','Preset chips you could apply and remove','Show what the device is doing; expose the inputs the user actually set up (the onboarding preferences)','Presets are gone. "Now playing" is read-only. A Preferences block edits environment, lifestyle tags, occupancy and energy with HA select, toggle and slider features']
-];
-document.getElementById('review-table').innerHTML = `<thead><tr>${['Area','v3','HA rule','v4'].map(h=>`<th style="text-align:left;padding:8px 10px;font-size:12px;color:var(--g-muted);border-bottom:1px solid var(--g-line)">${h}</th>`).join('')}</tr></thead><tbody>${REVIEW.map(r=>`<tr>${r.map((c,i)=>`<td style="padding:9px 10px;border-bottom:1px solid var(--g-line);vertical-align:top;${i===0?'font-weight:600;white-space:nowrap':''}">${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody>`;
-/* gallery theme toggle */
-(function(){
-  const root = document.documentElement, btn = document.getElementById('gtheme'), order = ['auto','light','dark']; let i = 0;
-  btn.addEventListener('click', () => { i = (i + 1) % 3; const v = order[i]; if (v === 'auto') root.removeAttribute('data-gtheme'); else root.setAttribute('data-gtheme', v); btn.textContent = 'Gallery: ' + v; });
-})();
 </script>
 </body>
 </html>

@@ -75,7 +75,7 @@ globalThis.customElements = {
 
 globalThis.customCards = undefined;
 
-await import(pathToFileURL(cardPath).href);
+const card = await import(pathToFileURL(cardPath).href);
 
 assert.ok(
   Array.isArray(globalThis.customCards),
@@ -101,5 +101,23 @@ assert.equal(
   "custom:kevin-presence-card",
   "YAML type must match registered custom element tag"
 );
+
+/* Variants: new key wins, legacy layout/size keys keep old dashboards working. */
+const { variantOf, KevinPresenceCard } = card;
+assert.equal(variantOf({}), "standard");
+assert.equal(variantOf({ variant: "full" }), "full");
+assert.equal(variantOf({ layout: "compact" }), "minimal");
+assert.equal(variantOf({ size: "compact" }), "minimal");
+assert.equal(variantOf({ size: "expanded" }), "full");
+assert.equal(variantOf({ variant: "minimal", layout: "full" }), "minimal");
+
+const sizing = (config) => {
+  const c = Object.create(KevinPresenceCard.prototype);
+  c._config = { ...config, variant: variantOf(config) };
+  return [c.getGridOptions(), c.getCardSize()];
+};
+assert.deepEqual(sizing({ variant: "minimal" }), [{ columns: 6, rows: 1, min_columns: 3, max_rows: 1 }, 1]);
+assert.deepEqual(sizing({ variant: "standard" }), [{ columns: 12, min_columns: 9 }, 16]);
+assert.deepEqual(sizing({ variant: "full" }), [{ columns: 12, min_columns: 9 }, 27]);
 
 console.log("card_registration_smoke: ok");
