@@ -1,9 +1,16 @@
 /*
- * KEVIN® card for Home Assistant (design v6).
+ * KEVIN® card for Home Assistant (design v7, HA default dark).
  *
- * Normative reference: docs/card/prototypes/kevin-ha-card-v6.html
+ * Normative reference: docs/card/prototypes/kevin-ha-card-v7-ha-dark.html
  *
- * The card is a small window with KEVIN on a shelf:
+ * Three variants share one data model:
+ *  - minimal: the Home Assistant tile, one grid row; the icon circle switches On and
+ *    Standby, the row opens more info, a dot on the icon flags the subscription,
+ *  - standard: the everyday card,
+ *  - full: the same card unfolded (hours per day, the preferences editor always open,
+ *    a device block with serial, firmware, state and reboot).
+ *
+ * The standard and full cards are a small window with the real KEVIN on a shelf:
  *  - the day-night strip is the wake / standby switch (drag, tap or arrow keys),
  *  - the subscription is a ring that counts the days left,
  *  - "Now playing" shows what KEVIN chose to play, read-only,
@@ -19,8 +26,11 @@
 const CARD_TYPE = "kevin-presence-card";
 const EDITOR_TYPE = "kevin-presence-card-editor";
 const DOMAIN = "mitipi_kevin";
-const LAYOUTS = ["compact", "standard", "full"];
-const LEGACY_SIZE_TO_LAYOUT = { compact: "compact", standard: "standard", expanded: "full" };
+const VARIANTS = ["minimal", "standard", "full"];
+/* Older configs used `layout: compact | standard | full` or `size: compact | standard | expanded`. */
+const LEGACY_TO_VARIANT = { compact: "minimal", minimal: "minimal", standard: "standard", full: "full", expanded: "full" };
+const variantOf = (config) =>
+  config.variant || LEGACY_TO_VARIANT[config.layout] || LEGACY_TO_VARIANT[config.size] || "standard";
 const MODE_PENDING_MS = 45000;
 const REBOOT_WINDOW_MS = 150000;
 const SAVE_CONFIRM_MS = 20000;
@@ -73,8 +83,18 @@ const CSS_ESCAPE = (s) =>
   globalThis.CSS && globalThis.CSS.escape ? globalThis.CSS.escape(s) : String(s).replace(/"/g, '\\"');
 
 /* ---------------- icons and artwork ---------------- */
+/* Traced from the product photo: the wedge, the end panel and the mark. One path, 24 px grid. */
 const KEVIN_PATH =
-  "M5.3 5.5h.2L7.1 17.5H3.8c-1.1 0-1.9-1.1-1.6-2.2l1.6-8.6c.1-.7.7-1.2 1.5-1.2ZM6.6 5.5h12.3c.7 0 1.3.5 1.5 1.2l2.2 8.6c.3 1.1-.5 2.2-1.6 2.2H8.2ZM9.9 15.8h2.8l-1.4-2.9Z";
+  "M3.20 7.00L18.55 6.78Q20.35 6.80 20.90 8.45L22.42 15.15Q22.62 15.92 21.86 16.02L2.45 16.42Q1.58 16.46 1.52 15.72L1.50 15.32ZM3.51 6.91L6.36 16.12L5.74 16.40L2.89 7.19ZM11.20 10.55L12.92 13.99Q13.00 14.45 12.30 14.45L10.10 14.45Q9.40 14.45 9.48 13.99Z";
+/* The window shows the real KEVIN: the product photo cut out of its background (2:1),
+   served next to this script from the same versioned static path. */
+const PHOTO_URL = (() => {
+  try {
+    return new URL("kevin-photo-scene.webp", import.meta.url).href;
+  } catch (_err) {
+    return "/mitipi_kevin/kevin-photo-scene.webp";
+  }
+})();
 const kevinGlyph = (a = "") =>
   `<svg ${a} viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="${KEVIN_PATH}"/></svg>`;
 const IC = {
@@ -109,24 +129,11 @@ function layer(id, m) {
     <path d="M0 140C80 126 150 136 230 130S350 124 400 136V150H0Z" fill="${P.h2}"/>
     <rect y="148" width="400" height="52" fill="${P.w}"/><rect y="140" width="400" height="8" fill="${P.sh}"/></svg>`;
 }
-/* KEVIN device in a 200 x 120 box: grey fabric wedge, white side, triangle logo. */
-function deviceArt(id) {
-  return `<defs>
-    <linearGradient id="${id}f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A9AFB2"/><stop offset="1" stop-color="#868C90"/></linearGradient>
-    <linearGradient id="${id}w" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#D9DDE0"/></linearGradient>
-    <linearGradient id="${id}l" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#E0348A"/><stop offset="1" stop-color="#5C8BC1"/></linearGradient>
-    <filter id="${id}t"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3"/><feColorMatrix values="0 0 0 0 .3 0 0 0 0 .33 0 0 0 0 .35 0 0 0 .35 0"/><feComposite in2="SourceGraphic" operator="in"/></filter></defs>
-    <g stroke-linejoin="round" stroke-width="5">
-      <path d="M40 18 24 84l34 9-11-75Z" fill="url(#${id}w)" stroke="url(#${id}w)"/>
-      <path d="M47 18h110l16 60q2 5-3 8L58 93Z" fill="url(#${id}f)" stroke="url(#${id}f)"/></g>
-    <path d="M47 18h110l16 60q2 5-3 8L58 93Z" fill="#000" filter="url(#${id}t)" opacity=".5"/>
-    <path d="M67 81l6-12 6 12Z" fill="url(#${id}l)" stroke="url(#${id}l)" stroke-width="3" stroke-linejoin="round"/>`;
-}
-function foreground(id) {
+function foreground() {
   return `<svg class="fg" viewBox="0 0 400 200" preserveAspectRatio="xMaxYMax meet" role="img" aria-label="KEVIN on a shelf">
-    <ellipse cx="288" cy="142" rx="72" ry="5" fill="#000" opacity=".18"/>
-    ${[0, 1, 2].map((i) => `<ellipse class="arc" style="animation-delay:${i * 0.8}s" cx="288" cy="104" rx="62" ry="40"/>`).join("")}
-    <g transform="translate(206 66) scale(.82)">${deviceArt(id)}</g></svg>`;
+    <ellipse cx="282" cy="142" rx="74" ry="5" fill="#000" opacity=".2"/>
+    ${[0, 1, 2].map((i) => `<ellipse class="arc" style="animation-delay:${i * 0.8}s" cx="282" cy="106" rx="64" ry="40"/>`).join("")}
+    <image href="${PHOTO_URL}" x="210" y="71" width="144" height="72" preserveAspectRatio="xMidYMax meet"/></svg>`;
 }
 function wave(name, playing) {
   let h = 0;
@@ -275,12 +282,25 @@ function resolveEntities(hass, configEntity, registryCache) {
   return out;
 }
 
-/* ---------------- CSS (ported from the v6 prototype) ---------------- */
+/* ---------------- CSS (ported from the v7 HA-dark prototype) ---------------- */
 const CSS = `
 :host{display:block;
   --kv-ok:#0A7A52;--kv-okS:#DDF4EA;--kv-warn:#8A5A00;--kv-warnS:#FFF1D1;--kv-bad:#B3342B;--kv-badS:#FBE4E1;
   --kv-surface:color-mix(in srgb,var(--primary-text-color,#212121) 5%,var(--ha-card-background,var(--card-background-color,#fff)));
-  --kv-plus-bg:#E4EDF4;--kv-plus-fg:#2B4E69}
+  --kv-plus-bg:#E4EDF4;--kv-plus-fg:#2B4E69;
+  /* The HA blue is a mid tone: white text on it measures 2.6:1, below AA, and a bar of it on
+     a light track is under 3:1. These mix the primary toward the theme's own ink so every
+     theme stays legible. Older engines keep the plain fallback. */
+  --kv-accent:var(--primary-color);
+  --kv-accent:color-mix(in srgb,var(--primary-color) 66%,var(--primary-text-color));
+  --kv-tint:var(--kv-surface);
+  --kv-tint:color-mix(in srgb,var(--primary-color) 16%,var(--ha-card-background,var(--card-background-color,#fff)));
+  --kv-ontint:var(--kv-surface);
+  --kv-ontint:color-mix(in srgb,var(--state-active-color,#FFAD00) 22%,var(--ha-card-background,var(--card-background-color,#fff)));
+  --kv-offtint:var(--kv-surface);
+  --kv-offtint:color-mix(in srgb,var(--secondary-text-color) 16%,var(--ha-card-background,var(--card-background-color,#fff)));
+  --kv-onink:var(--state-active-color,#FFAD00);
+  --kv-onink:color-mix(in srgb,var(--state-active-color,#FFAD00) 58%,var(--primary-text-color))}
 :host([dark]){--kv-ok:#4FD1A1;--kv-okS:#12332A;--kv-warn:#FFC24D;--kv-warnS:#3A2C0B;--kv-bad:#F2877E;--kv-badS:#3A1B19;--kv-plus-bg:#1E3345;--kv-plus-fg:#9CCBF0}
 .kv-host{container-type:inline-size;width:100%;position:relative}
 .kv{
@@ -294,7 +314,9 @@ const CSS = `
 :where(.kv) button,:where(.kv) select{font:inherit;color:inherit}
 .kv button,.kv .trig,.kv .track{cursor:pointer}
 .kv button:disabled{cursor:not-allowed}
-.kv :focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
+.kv :focus-visible{outline:2px solid var(--kv-accent);outline-offset:2px}
+/* an explicit display beats the hidden attribute, so say it again */
+.kv [hidden]{display:none!important}
 .kv svg{display:block}
 
 .kv-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px var(--pad) 0;cursor:pointer;border-radius:8px}
@@ -323,7 +345,7 @@ const CSS = `
 .scene[data-v="off"] .fg{filter:grayscale(1);opacity:.7}
 .arc{fill:none;stroke:var(--ink);stroke-width:1.6;opacity:0;transform-box:fill-box;transform-origin:center}
 .playing .arc{animation:ripple 2.4s ease-out infinite}
-@keyframes ripple{0%{transform:scale(.55);opacity:.55}100%{transform:scale(1.55);opacity:0}}
+@keyframes ripple{0%{transform:scale(1.05);opacity:.32}100%{transform:scale(1.7);opacity:0}}
 .scene-txt{position:absolute;left:14px;bottom:12px;max-width:52%;min-width:0}
 .kv-name{font-size:19px;font-weight:500;letter-spacing:-.015em;line-height:1.15;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .kv-serial{font-size:12px;font-weight:500;opacity:.85;margin-top:3px;font-variant-numeric:tabular-nums;letter-spacing:.02em}
@@ -388,7 +410,7 @@ const CSS = `
 .note{font-size:12px;color:var(--secondary-text-color);line-height:1.4}
 
 .wave{flex:0 0 auto;display:flex;align-items:center;gap:2px;height:24px;width:44px}
-.wave i{flex:1;min-width:2px;border-radius:2px;background:var(--primary-color);height:var(--h);opacity:.9;transform-origin:center}
+.wave i{flex:1;min-width:2px;border-radius:2px;background:var(--kv-accent);height:var(--h);opacity:.9;transform-origin:center}
 .wave.playing i{animation:eq 1s ease-in-out infinite;animation-delay:var(--d)}
 @keyframes eq{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1.15)}}
 .spin{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:rot .7s linear infinite;display:inline-block}
@@ -404,14 +426,14 @@ const CSS = `
 .dlg h3{margin:0 0 8px;font-size:20px;font-weight:500;line-height:1.3}
 .dlg p{margin:0 0 18px;font-size:14px;color:var(--secondary-text-color)}
 .dlg .acts{display:flex;justify-content:flex-end;gap:4px}
-.dlg .acts button{border:0;background:transparent;border-radius:999px;padding:0 16px;height:40px;font-weight:500;font-size:14px;color:var(--primary-color)}
+.dlg .acts button{border:0;background:transparent;border-radius:999px;padding:0 16px;height:40px;font-weight:500;font-size:14px;color:var(--kv-accent)}
 .dlg .acts button.danger{color:var(--kv-bad)}
 .dlg .acts button:hover{background:var(--kv-surface)}
 .mi{max-width:420px}
 .mi dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:0 0 18px;font-size:14px}
 .mi dt{color:var(--secondary-text-color)}.mi dd{margin:0;font-weight:500;overflow-wrap:anywhere}
 .mi .hdr{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-.mi .hdr .circ{flex:0 0 auto;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#FFE3A0;color:#2B4E69}
+.mi .hdr .circ{flex:0 0 auto;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--kv-ontint);color:var(--kv-onink)}
 .mi .hdr .circ svg{width:22px;height:22px}
 .mi .hdr h3{margin:0}
 .mi .hdr small{display:block;font-weight:400;font-size:12px;color:var(--secondary-text-color)}
@@ -432,11 +454,11 @@ const CSS = `
 .sched .d{font-size:12px;font-weight:600;color:var(--secondary-text-color);width:16px;text-align:center}
 .sched .d.today{color:var(--primary-text-color);font-weight:800}
 .sched .r{position:relative;height:12px;border-radius:4px;background:var(--kv-surface);border:1px solid var(--divider-color);cursor:pointer;padding:0;display:block;width:100%}
-.sched .r:focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
-.sched .r.today{border-color:var(--primary-color)}
-.sched .r b{position:absolute;top:2px;bottom:2px;border-radius:3px;background:var(--primary-color);opacity:.85}
+.sched .r:focus-visible{outline:2px solid var(--kv-accent);outline-offset:2px}
+.sched .r.today{border-color:var(--kv-accent)}
+.sched .r b{position:absolute;top:2px;bottom:2px;border-radius:3px;background:var(--kv-accent);opacity:.9}
 .sched .r.today b{opacity:1}
-.sched .r .now{position:absolute;top:-3px;bottom:-3px;width:2px;background:#FFAD00;border-radius:1px}
+.sched .r .now{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--kv-onink);border-radius:1px}
 .sched .r .ni{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(90deg,transparent 0 3px,var(--divider-color) 3px 4px);opacity:.6;pointer-events:none}
 .sched-foot{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--secondary-text-color);margin-top:8px}
 .sched-foot b{color:var(--primary-text-color);font-weight:700}
@@ -449,8 +471,8 @@ const CSS = `
 .pchip{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:var(--feature-height,42px);padding:0 12px;border-radius:var(--feature-border-radius,12px);white-space:nowrap;overflow:hidden;border:1px solid var(--divider-color);background:var(--kv-surface);font-size:13px;font-weight:500;color:var(--primary-text-color);min-width:0}
 .pchip span.l{overflow:hidden;text-overflow:ellipsis}
 .pchip i{width:8px;height:8px;border-radius:50%;background:var(--divider-color);flex:0 0 auto}
-.pchip[aria-pressed="true"]{background:var(--primary-color);border-color:var(--primary-color);color:var(--text-primary-color)}
-.pchip[aria-pressed="true"] i{background:currentColor;opacity:.9}
+.pchip[aria-pressed="true"]{background:var(--kv-tint);border-color:var(--kv-accent);color:var(--primary-text-color)}
+.pchip[aria-pressed="true"] i{background:var(--kv-accent);opacity:1}
 .pchip:disabled{opacity:.5}
 .pref-row{display:flex;align-items:center;gap:10px;min-height:var(--feature-height,42px)}
 .pref-t{flex:1;min-width:0}
@@ -458,11 +480,11 @@ const CSS = `
 .gear{flex:0 0 auto;width:36px;height:36px;border-radius:50%;border:0;background:var(--kv-surface);color:var(--secondary-text-color);display:flex;align-items:center;justify-content:center;padding:0}
 .gear svg{width:20px;height:20px}
 .gear:hover:not(:disabled){color:var(--primary-text-color);filter:brightness(1.12)}
-.gear[aria-expanded="true"]{background:var(--primary-color);color:var(--text-primary-color)}
+.gear[aria-expanded="true"]{background:var(--kv-tint);color:var(--kv-accent)}
 .gear:disabled{opacity:.5}
 .prefs{display:flex;flex-direction:column;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--divider-color)}
 .trig{position:relative;display:flex;align-items:center;gap:10px;min-height:48px;height:var(--feature-height,42px);padding:0 12px;border:1px solid var(--divider-color);background:var(--kv-surface);border-radius:var(--feature-border-radius,12px);cursor:pointer}
-.trig:focus-within{outline:2px solid var(--primary-color);outline-offset:2px}
+.trig:focus-within{outline:2px solid var(--kv-accent);outline-offset:2px}
 .trig.dis{opacity:.5;cursor:not-allowed}
 .trig select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px}
 .trig select:disabled{cursor:not-allowed}
@@ -474,37 +496,62 @@ const CSS = `
 .sl-v{color:var(--secondary-text-color);font-variant-numeric:tabular-nums}
 .sl-l{display:flex;justify-content:space-between;font-size:11px;color:var(--secondary-text-color)}
 .sl input[type=range]{width:100%;height:var(--feature-height,42px);margin:0;appearance:none;-webkit-appearance:none;background:transparent;cursor:pointer}
-.sl input[type=range]::-webkit-slider-runnable-track{height:var(--feature-height,42px);border-radius:var(--feature-border-radius,12px);background:linear-gradient(90deg,var(--primary-color) 0 var(--p),var(--kv-surface) var(--p) 100%);border:1px solid var(--divider-color)}
+.sl input[type=range]::-webkit-slider-runnable-track{height:var(--feature-height,42px);border-radius:var(--feature-border-radius,12px);background:linear-gradient(90deg,var(--kv-accent) 0 var(--p),var(--kv-surface) var(--p) 100%);border:1px solid var(--divider-color)}
 .sl input[type=range]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:4px;height:26px;margin-top:7px;border-radius:2px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 .sl input[type=range]::-moz-range-track{height:var(--feature-height,42px);border-radius:var(--feature-border-radius,12px);background:var(--kv-surface);border:1px solid var(--divider-color)}
-.sl input[type=range]::-moz-range-progress{height:var(--feature-height,42px);border-radius:var(--feature-border-radius,12px);background:var(--primary-color)}
+.sl input[type=range]::-moz-range-progress{height:var(--feature-height,42px);border-radius:var(--feature-border-radius,12px);background:var(--kv-accent)}
 .sl input[type=range]::-moz-range-thumb{width:4px;height:26px;border:0;border-radius:2px;background:#fff}
 .sl input[type=range]:disabled{opacity:.5;cursor:not-allowed}
-.sl input[type=range]:focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
+.sl input[type=range]:focus-visible{outline:2px solid var(--kv-accent);outline-offset:2px}
 .saving{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--secondary-text-color);margin-left:8px}
 .saving .spin{width:10px;height:10px;border-width:1.5px}
 
-.kv.compact{display:flex;align-items:center;gap:12px;padding:0 12px;height:56px}
-.tile-ic{flex:0 0 auto;width:36px;height:36px;border-radius:50%;border:0;display:flex;align-items:center;justify-content:center;padding:0;transition:background .3s,color .3s}
+/* ---------- minimal: the Home Assistant tile, one grid row ---------- */
+.kv.minimal{display:flex;align-items:center;gap:12px;padding:0 12px;height:56px}
+.tile-ic{position:relative;flex:0 0 auto;width:36px;height:36px;border-radius:50%;border:0;padding:0;
+  display:flex;align-items:center;justify-content:center;background:var(--kv-offtint);color:var(--secondary-text-color);
+  transition:background .3s,color .3s}
+.tile-ic::after{content:'';position:absolute;inset:-4px;border-radius:50%}
 .tile-ic svg{width:22px;height:22px}
-.tile-ic.on{background:rgba(255,173,0,.2);color:var(--state-active-color,#FFAD00)}
-.tile-ic.standby{background:rgba(75,141,197,.2);color:#4B8DC5}
-.tile-ic.off{background:rgba(189,189,189,.2);color:var(--state-unavailable-color,#BDBDBD)}
-.tile-ic:hover:not(:disabled){filter:brightness(1.15)}
-.tile-ic:disabled{opacity:.6}
-.kv.compact .tmid{flex:1;min-width:0;cursor:pointer;border-radius:8px}
-.kv.compact .nm{font-weight:500;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kv.compact .st{font-size:12px;color:var(--secondary-text-color);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kv.compact .st.warn{color:var(--kv-warn);font-weight:500}
+.tile-ic.on{background:var(--kv-ontint);color:var(--kv-onink)}
+.tile-ic.standby{background:var(--kv-tint);color:var(--kv-accent)}
+.tile-ic:hover:not(:disabled){filter:brightness(1.1)}
+.tile-ic:disabled{cursor:not-allowed}
+.tile-ic .busy{position:absolute;inset:-3px;border-radius:50%;border:2px solid transparent;border-top-color:currentColor;animation:rot 1s linear infinite}
+.tile-badge{position:absolute;right:-2px;bottom:-2px;width:12px;height:12px;border-radius:50%;
+  border:2px solid var(--ha-card-background,var(--card-background-color,#fff));background:var(--kv-onink)}
+.tile-badge.err{background:var(--kv-bad)}
+.kv.minimal .mid{flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;border-radius:8px;cursor:pointer;color:inherit}
+.kv.minimal .nm{font-weight:500;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kv.minimal .st{font-size:12px;color:var(--secondary-text-color);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kv.minimal .st b{font-weight:500;color:var(--primary-text-color)}
 
+/* ---------- full: the same card with its detail unfolded ---------- */
 .kv.full{--pad:20px}
-.kv.full .scene{height:180px}
-.kv.full .ring{width:96px;height:96px}
-.kv.full .ring .big{font-size:26px}
-.kv.full .kv-body{gap:20px}
-.kv.full .np{padding:12px 14px}
+.kv.full .scene{height:184px}
 .kv.full .kv-name{font-size:22px}
-.kv.full .foot{align-items:flex-start}
+.kv.full .kv-body{gap:18px}
+.kv.full .np{padding:12px 14px}
+.kv.full .sched{grid-template-columns:auto 1fr auto;gap:4px 10px}
+.kv.full .sched .r{height:16px}
+.kv.full .sched .r::before{content:'';position:absolute;inset:0;pointer-events:none;border-radius:4px;
+  background:repeating-linear-gradient(90deg,transparent 0 calc(25% - 1px),var(--divider-color) calc(25% - 1px),var(--divider-color) 25%)}
+.kv.full .sched .dayhrs{font-size:11px;color:var(--secondary-text-color);font-variant-numeric:tabular-nums;text-align:right;min-width:30px}
+.kv.full .ruler{position:relative;height:14px}
+.kv.full .ruler span{position:absolute;top:0;font-size:10px;color:var(--secondary-text-color);transform:translateX(-50%);font-variant-numeric:tabular-nums}
+.kv.full .ruler span:first-child{transform:none}
+.kv.full .ruler span:last-child{transform:translateX(-100%)}
+.devl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 12px;font-size:13px}
+.devl dt{color:var(--secondary-text-color)}
+.devl dd{margin:0;font-weight:500;overflow-wrap:anywhere}
+.kv.full .dev .fbtn{width:100%}
+.kv.full .pref-row{min-height:0}
+.kv.full .prefs{margin-top:8px;padding-top:0;border-top:0}
+.kv.full .fcols{padding:12px var(--pad) var(--pad)}
+.kv.full .fcols > *{break-inside:avoid;margin:0 0 18px}
+.kv.full .fcols > :last-child{margin-bottom:0}
+.kv.full .fcols .kv-stage{margin:0 0 18px;align-self:auto}
+.kv.full .np .nm,.kv.full .np .sub2{white-space:normal;overflow:visible}
 
 @container (max-width:319px){
   .scene{height:150px}
@@ -514,32 +561,87 @@ const CSS = `
   .foot{flex-direction:column;align-items:stretch}
 }
 @container (min-width:560px){
-  .kv:not(.compact){display:grid;grid-template-columns:minmax(240px,40%) 1fr;grid-template-rows:auto 1fr}
-  .kv:not(.compact) .kv-body{grid-template-columns:1fr 1fr;align-content:start;column-gap:20px}
-  .kv:not(.compact) .blk.foot{grid-column:1/-1}
-  .kv:not(.compact) .blk.now{grid-column:1/-1}
-  .kv:not(.compact) .kv-head{grid-column:1/-1}
-  .kv:not(.compact) .kv-stage{margin:12px 0 var(--pad) var(--pad);display:flex;flex-direction:column;align-self:start}
-  .kv:not(.compact) .scene{height:auto;aspect-ratio:400/230}
-  .kv.full:not(.compact) .kv-stage{margin-left:20px;margin-bottom:20px}
-  .kv:not(.compact) .kv-body{padding-top:12px}
+  .kv.minimal{display:flex}
+  .kv:not(.minimal){display:grid;grid-template-columns:minmax(240px,40%) 1fr;grid-template-rows:auto 1fr}
+  .kv:not(.minimal) .kv-body{grid-template-columns:1fr 1fr;align-content:start;column-gap:20px}
+  .kv:not(.minimal) .blk.foot,.kv:not(.minimal) .blk.now,.kv:not(.minimal) .blk.sched{grid-column:1/-1}
+  .kv:not(.minimal) .kv-head{grid-column:1/-1}
+  .kv:not(.minimal) .kv-stage{margin:12px 0 var(--pad) var(--pad);display:flex;flex-direction:column;align-self:start}
+  .kv:not(.minimal) .scene{height:auto;aspect-ratio:400/230}
+  .kv:not(.minimal) .kv-body{padding-top:12px}
 }
 @container (min-width:860px){
-  .kv:not(.compact){grid-template-columns:minmax(260px,30%) 1fr}
-  .kv:not(.compact) .kv-body{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1.2fr)}
-  .kv:not(.compact) .chipset{grid-template-columns:1fr}
-  .kv:not(.compact) .chipset .pchip{justify-content:flex-start}
-  .kv:not(.compact) .chipset .pchip:last-child:nth-child(odd){grid-column:auto}
-  .kv:not(.compact) .trig .hint2{display:none}
-  .kv:not(.compact) .pref-sum{white-space:normal;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;line-height:1.35}
-  .kv:not(.compact) .pref-row{align-items:flex-start}
-  .kv:not(.compact) .trig .nm{flex:1}
-  .kv:not(.compact) .subtxt{gap:4px}
-  .kv:not(.compact) .ends{font-size:14px}
-  .kv:not(.compact) .sub{gap:12px}
-  .kv:not(.compact) .ring{width:76px;height:76px}
-  .kv:not(.compact) .ring .big{font-size:21px}
-  .kv:not(.compact) .np{max-width:560px}
+  .kv:not(.minimal){grid-template-columns:minmax(260px,30%) 1fr}
+  .kv:not(.minimal) .kv-body{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1.2fr)}
+  .kv:not(.minimal) .chipset{grid-template-columns:1fr}
+  .kv:not(.minimal) .chipset .pchip{justify-content:flex-start}
+  .kv:not(.minimal) .chipset .pchip:last-child:nth-child(odd){grid-column:auto}
+  .kv:not(.minimal) .trig .hint2{display:none}
+  .kv:not(.minimal) .pref-sum{white-space:normal;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;line-height:1.35}
+  .kv:not(.minimal) .pref-row{align-items:flex-start}
+  .kv:not(.minimal) .trig .nm{flex:1}
+  .kv:not(.minimal) .subtxt{gap:4px}
+  .kv:not(.minimal) .ends{font-size:14px}
+  .kv:not(.minimal) .sub{gap:12px}
+  .kv:not(.minimal) .ring{width:76px;height:76px}
+  .kv:not(.minimal) .ring .big{font-size:21px}
+  .kv:not(.minimal) .blk.now{grid-column:1/-1}
+  .kv:not(.minimal) .blk.foot{grid-column:1/-1}
+  .kv:not(.minimal) .np{max-width:560px}
+}
+/* ---------- full: balanced columns, after the generic wide rules so they win ---------- */
+@container (min-width:560px){
+  .kv.full{display:block}
+  .kv.full .fcols{columns:2;column-gap:22px}
+  .kv.full .chipset{grid-template-columns:1fr 1fr}
+  .kv.full .chipset .pchip{height:auto;min-height:var(--feature-height,42px);white-space:normal;line-height:1.2;padding:6px 10px;justify-content:flex-start;text-align:left}
+  .kv.full .chipset .pchip span.l{overflow:visible}
+  .kv.full .chipset .pchip:last-child:nth-child(odd){grid-column:1/-1}
+  .kv.full .prefs{align-items:stretch}
+}
+@container (min-width:860px){
+  .kv.full .fcols{columns:3}
+}
+/* ---------- standard, medium (560 to 860): two body columns ---------- */
+@container (min-width:560px){
+  .kv.standard{grid-template-columns:minmax(220px,40%) repeat(2,minmax(0,1fr));grid-template-rows:auto auto auto auto;
+    column-gap:18px;row-gap:14px;padding:0 var(--pad) var(--pad)}
+  .kv.standard .kv-body{display:contents}
+  .kv.standard .kv-head{grid-column:1/-1;padding:12px 0 0}
+  .kv.standard .kv-stage{grid-column:1;grid-row:2/4;margin:0;align-self:start}
+  .kv.standard .blk.now{grid-column:2/4;grid-row:2}
+  .kv.standard .blk.sub-b{grid-column:2;grid-row:3}
+  .kv.standard .blk.sched-blk{grid-column:3;grid-row:3}
+  .kv.standard .blk.pref-b{grid-column:2/4;grid-row:4}
+  .kv.standard .blk.foot{grid-column:1;grid-row:4;align-self:end}
+}
+/* ---------- standard, wide: firmware and reboot sit under the window. Placement only; the DOM
+   and focus order stay window, now playing, subscription, schedule, preferences, reboot. ---------- */
+@container (min-width:860px){
+  .kv.standard{grid-template-columns:minmax(250px,30%) repeat(3,minmax(0,1fr));grid-template-rows:auto auto 1fr auto;
+    column-gap:20px;row-gap:14px;padding:0 var(--pad) var(--pad)}
+  .kv.standard .kv-body{display:contents}
+  .kv.standard .kv-head{grid-column:1/-1;padding:12px 0 0}
+  .kv.standard .kv-stage{grid-column:1;grid-row:2/4;margin:0;align-self:start}
+  .kv.standard .blk.now{grid-column:2/5;grid-row:2}
+  .kv.standard .blk.sub-b{grid-column:2;grid-row:3/5}
+  .kv.standard .blk.sched-blk{grid-column:3;grid-row:3/5}
+  .kv.standard .blk.pref-b{grid-column:4;grid-row:3/5}
+  .kv.standard .blk.foot{grid-column:1;grid-row:4;align-self:end}
+}
+/* ---------- standard with the preferences editor open: the panel takes the whole body width ---------- */
+@container (min-width:560px){
+  .kv.standard.prefs-open .blk.pref-b{grid-column:2/-1;grid-row:4}
+  .kv.standard.prefs-open .prefs{display:block;columns:2;column-gap:20px}
+  .kv.standard.prefs-open .prefs > *{break-inside:avoid;margin:0 0 12px}
+  .kv.standard.prefs-open .chipset{grid-template-columns:1fr 1fr}
+  .kv.standard.prefs-open .chipset .pchip{height:auto;min-height:var(--feature-height,42px);white-space:normal;line-height:1.2;padding:6px 10px;justify-content:flex-start;text-align:left}
+  .kv.standard.prefs-open .chipset .pchip span.l{overflow:visible}
+  .kv.standard.prefs-open .chipset .pchip:last-child:nth-child(odd){grid-column:1/-1}
+}
+@container (min-width:860px){
+  .kv.standard.prefs-open .blk.sched-blk{grid-column:3/5;grid-row:3}
+  .kv.standard.prefs-open .blk.sub-b{grid-row:3}
 }
 @media (prefers-reduced-motion:reduce){
   .kv *,.kv *::before,.kv *::after{animation:none!important;transition:none!important}
@@ -574,14 +676,14 @@ class KevinPresenceCard extends HTMLElement {
     const power = Object.values(entities).find(
       (e) => e.platform === DOMAIN && e.entity_id.startsWith("switch."),
     );
-    return { entity: power ? power.entity_id : "", layout: "standard" };
+    return { entity: power ? power.entity_id : "", variant: "standard" };
   }
 
   setConfig(config) {
     if (!config || typeof config !== "object") throw new Error("Invalid configuration");
-    const layout = config.layout || LEGACY_SIZE_TO_LAYOUT[config.size] || "standard";
-    if (!LAYOUTS.includes(layout)) throw new Error(`layout must be one of ${LAYOUTS.join(", ")}`);
-    this._config = { ...config, layout };
+    const variant = variantOf(config);
+    if (!VARIANTS.includes(variant)) throw new Error(`variant must be one of ${VARIANTS.join(", ")}`);
+    this._config = { ...config, variant };
     this._sig = "";
     this._render();
   }
@@ -598,15 +700,17 @@ class KevinPresenceCard extends HTMLElement {
     return this._hass;
   }
 
+  /* Measured with the preferences closed: minimal 1 row, standard 13 rows, full 21 rows on a
+     12-column section (6 and 9 rows on a column_span 2 section). Standard and full leave
+     `rows` to the content, because the height follows the section width and the editor. */
   getCardSize() {
-    const layout = this._config ? this._config.layout : "standard";
-    return layout === "compact" ? 1 : layout === "full" ? 9 : 16;
+    const variant = this._config ? this._config.variant : "standard";
+    return variant === "minimal" ? 1 : variant === "full" ? 27 : 16;
   }
 
   getGridOptions() {
-    const layout = this._config ? this._config.layout : "standard";
-    if (layout === "compact") return { columns: 6, rows: 1, min_columns: 3, max_rows: 1 };
-    if (layout === "full") return { columns: "full", min_columns: 12 };
+    const variant = this._config ? this._config.variant : "standard";
+    if (variant === "minimal") return { columns: 6, rows: 1, min_columns: 3, max_rows: 1 };
     return { columns: 12, min_columns: 9 };
   }
 
@@ -784,9 +888,10 @@ class KevinPresenceCard extends HTMLElement {
 
   _tpl(m) {
     const id = this._uid;
-    const layout = this._config.layout;
+    const variant = this._config.variant;
+    const full = variant === "full";
     if (m.missing) {
-      return `<div class="kv ${layout}" style="padding:16px"><div class="note">Select a KEVIN® power entity in the card settings.</div></div>`;
+      return `<div class="kv ${variant === "minimal" ? "" : variant}" style="padding:16px"><div class="note">Select a KEVIN® power entity in the card settings.</div></div>`;
     }
     const busy = this._busy ? this._busy.kind : null;
     // While a mode change is pending the card keeps showing it, even if one poll
@@ -799,18 +904,26 @@ class KevinPresenceCard extends HTMLElement {
     const playing = !off && m.mode === "ON" && !busy && !!m.current;
     const ui = this._ui;
 
-    /* ---- compact: tile anatomy ---- */
-    if (layout === "compact") {
-      const state =
-        busy === "rebooting" ? "Rebooting…" : busy === "waking" ? "Waking up…" : busy === "sleeping" ? "Going to sleep…"
-          : off ? (m.lastSeen ? `Unavailable · ${esc(m.lastSeen)}` : "Unavailable")
-            : m.mode === "ON" ? (m.current ? `On · ${esc(m.current.activity)}` : "On") : "Standby";
-      const warn = !off && (sub.key === "soon" || sub.key === "expired");
+    /* ---- minimal: the HA tile. Icon circle toggles, the row opens more info. ---- */
+    if (variant === "minimal") {
+      const nx = nextSlot(m.schedules);
+      const state = busy === "rebooting" ? 'Rebooting<span class="dots"></span>'
+        : busy === "waking" ? 'Waking up<span class="dots"></span>'
+          : busy === "sleeping" ? 'Going to sleep<span class="dots"></span>'
+            : off ? (m.lastSeen ? `Unavailable · last seen ${esc(m.lastSeen)}` : "Unavailable")
+              : m.mode === "ON" ? (m.current ? `<b>On</b> · ${esc(m.current.activity)}` : "<b>On</b>")
+                : nx ? `<b>Standby</b> · Presence ${nx.k === 0 ? `at ${hm(nx.f)}` : `${dayName(nx.k, nx.i).toLowerCase()} at ${hm(nx.f)}`}` : "<b>Standby</b>";
+      const flag = off ? "" : sub.key === "expired" ? "err" : sub.key === "soon" || sub.key === "trial" ? "warn" : "";
+      const flagTxt = flag === "err" ? "Subscription expired"
+        : flag === "warn" ? (sub.key === "trial" ? `Trial, ${sub.d} days left` : `Subscription ends in ${sub.d} days`) : "";
+      const plain = state.replace(/<[^>]*>/g, "");
       const dlg = ui.dialog === "info" ? this._moreInfo(m, true) : "";
-      return `<div class="kv compact">${dlg}
-        <button class="tile-ic ${vis}" data-act="toggle" data-fk="toggle" aria-label="${vis === "on" ? "Put on standby" : "Wake up"}" ${off || busy ? "disabled" : ""}>${kevinGlyph()}</button>
-        <div class="tmid" data-act="info" data-fk="info" role="button" tabindex="0" aria-label="More info for ${esc(m.name)}"><div class="nm">${esc(m.name)}</div><div class="st ${warn ? "warn" : ""}">${warn ? (sub.key === "expired" ? "Subscription expired" : `Subscription ends in ${sub.d} d`) : state}</div></div>
-        ${busy ? '<span class="spin" style="color:var(--secondary-text-color)"></span>' : ""}
+      return `<div class="kv minimal">${dlg}
+        <button class="tile-ic ${vis}" data-act="toggle" data-fk="toggle" ${off || busy ? "disabled" : ""}
+          aria-label="${esc(m.name)}, ${vis === "on" ? "on. Put on standby" : vis === "standby" ? "on standby. Wake up" : "unavailable"}">
+          ${kevinGlyph()}${busy ? '<span class="busy"></span>' : ""}${flag ? `<span class="tile-badge ${flag}"></span>` : ""}</button>
+        <button class="mid" data-act="info" data-fk="info" aria-label="${esc(m.name)}: ${esc(plain)}${flagTxt ? `. ${flagTxt}` : ""}. Open more info">
+          <div class="nm">${esc(m.name)}</div><div class="st" title="${esc(plain)}">${state}</div></button>
       </div>`;
     }
 
@@ -835,7 +948,7 @@ class KevinPresenceCard extends HTMLElement {
       const label = sub.key === "none" ? "Basic" : "—";
       ring = `<div class="ring"><svg viewBox="0 0 88 88" aria-hidden="true"><circle class="bg" cx="44" cy="44" r="${R}" stroke-dasharray="3 7"/></svg><div class="rmid"><span class="big" style="font-size:18px">${label}</span></div></div>`;
     } else {
-      const stroke = sub.tone === "err" ? "var(--kv-bad)" : sub.tone === "warn" ? "#FFAD00" : `url(#${id}r)`;
+      const stroke = sub.tone === "err" ? "var(--kv-bad)" : sub.tone === "warn" ? "var(--kv-onink)" : `url(#${id}r)`;
       const off2 = C * (1 - sub.frac);
       ring = `<div class="ring" role="img" aria-label="${sub.key === "expired" ? "Subscription expired" : sub.d === null ? "Subscription active" : `${sub.d} days left`}"><svg viewBox="0 0 88 88" aria-hidden="true"><defs><linearGradient id="${id}r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E0348A"/><stop offset="1" stop-color="#5C8BC1"/></linearGradient></defs>
         <circle class="bg" cx="44" cy="44" r="${R}"/>
@@ -876,13 +989,18 @@ class KevinPresenceCard extends HTMLElement {
       const bars = slots.map(([f, t]) => `<b style="left:${((f / 24) * 100).toFixed(1)}%;width:${(((t - f) / 24) * 100).toFixed(1)}%" title="${hm(f)}–${hm(t)}"></b>`).join("");
       const night = `<span class="ni" style="left:0;width:${((7.5 / 24) * 100).toFixed(1)}%"></span><span class="ni" style="left:${((21.5 / 24) * 100).toFixed(1)}%;width:${((2.5 / 24) * 100).toFixed(1)}%"></span>`;
       const nowLine = today ? `<span class="now" style="left:${((NH / 24) * 100).toFixed(1)}%"></span>` : "";
-      return `<span class="d ${today ? "today" : ""}" aria-hidden="true">${d}</span><button class="r ${today ? "today" : ""}" data-act="day" data-i="${i}" data-fk="day${i}" aria-label="${DOWL[i]}: ${slots.length ? slots.map(([f, t]) => `${hm(f)} to ${hm(t)}`).join(", ") : "no Presence"}" aria-expanded="${ui.openDay === i}">${night}${bars}${nowLine}</button>`;
+      const dayH = slots.reduce((a, [f, t]) => a + (t - f), 0);
+      const hrs = full ? `<span class="dayhrs">${dayH ? `${dayH.toFixed(dayH % 1 ? 1 : 0)} h` : "—"}</span>` : "";
+      return `<span class="d ${today ? "today" : ""}" aria-hidden="true">${d}</span><button class="r ${today ? "today" : ""}" data-act="day" data-i="${i}" data-fk="day${i}" aria-label="${DOWL[i]}: ${slots.length ? slots.map(([f, t]) => `${hm(f)} to ${hm(t)}`).join(", ") : "no Presence"}" aria-expanded="${ui.openDay === i}">${night}${bars}${nowLine}</button>${hrs}`;
     }).join("");
+    const ruler = full
+      ? `<span aria-hidden="true"></span><div class="ruler" aria-hidden="true">${[0, 6, 12, 18, 24].map((h) => `<span style="left:${((h / 24) * 100).toFixed(1)}%">${String(h).padStart(2, "0")}</span>`).join("")}</div><span></span>`
+      : "";
     const total = m.schedules.reduce((a, day) => a + day.reduce((b, [f, t]) => b + (t - f), 0), 0);
     const od = ui.openDay;
     const detail = od === null || od === undefined ? ""
       : `<b>${DOWL[od]}</b>: ${(m.schedules[od] || []).length ? m.schedules[od].map(([f, t]) => `${hm(f)}–${hm(t)}`).join(", ") : "no Presence"}`;
-    const schedBlock = `<div class="blk"><p class="sec-l">Schedule</p><div class="sched">${rows}</div>
+    const schedBlock = `<div class="blk sched-blk"><p class="sec-l">Schedule</p><div class="sched">${rows}${ruler}</div>
       <div class="sched-detail" aria-live="polite">${detail}</div>
       <div class="sched-foot"><span class="hrs"><b>${total.toFixed(total % 1 ? 1 : 0)} h</b> of Presence a week</span></div></div>`;
 
@@ -903,29 +1021,36 @@ class KevinPresenceCard extends HTMLElement {
       const saving = this._saving ? '<span class="saving"><span class="spin"></span>Saving</span>' : "";
       const tagNames = m.prefs.tags.map((k) => (env.tags.find((t) => t[0] === k) || [k, k])[1]);
       const summary = `${esc(env.name)}${tagNames.length ? ` · ${esc(tagNames.join(", "))}` : ""} · Occupancy ${m.prefs.occupancy} · Energy ${m.prefs.energy}`;
-      const editor = ui.prefsOpen ? `<div class="prefs" id="${id}pe">${envSel}<div class="chipset">${tagBtns}</div>${slider("occupancy", "Occupancy", env.occ)}${slider("energy", "Energy", env.energy)}</div>` : "";
-      prefBlock = `<div class="blk">
-        <div class="pref-row ${ui.prefsOpen ? "open" : ""}">
-          <div class="pref-t"><p class="sec-l" style="margin:0">Preferences ${saving}</p><div class="pref-sum" ${ui.prefsOpen ? "hidden" : ""}>${summary}</div></div>
-          <button class="gear" data-act="prefs" data-fk="prefs" aria-expanded="${!!ui.prefsOpen}" aria-controls="${id}pe" aria-label="${ui.prefsOpen ? "Close preferences" : "Edit preferences"}" ${(off || busy) && !ui.prefsOpen ? "disabled" : ""}>${ui.prefsOpen ? ic("x") : ic("gear")}</button>
+      const prefsOpen = ui.prefsOpen || full;
+      const editor = prefsOpen ? `<div class="prefs" id="${id}pe">${envSel}<div class="chipset">${tagBtns}</div>${slider("occupancy", "Occupancy", env.occ)}${slider("energy", "Energy", env.energy)}</div>` : "";
+      const gear = full ? ""
+        : `<button class="gear" data-act="prefs" data-fk="prefs" aria-expanded="${!!ui.prefsOpen}" aria-controls="${id}pe" aria-label="${ui.prefsOpen ? "Close preferences" : "Edit preferences"}" ${(off || busy) && !ui.prefsOpen ? "disabled" : ""}>${ui.prefsOpen ? ic("x") : ic("gear")}</button>`;
+      prefBlock = `<div class="blk pref-b">
+        <div class="pref-row ${prefsOpen ? "open" : ""}">
+          <div class="pref-t"><p class="sec-l" style="margin:0">Preferences ${saving}</p><div class="pref-sum" ${prefsOpen ? "hidden" : ""}>${summary}</div></div>
+          ${gear}
         </div>${editor}</div>`;
     } else {
-      prefBlock = `<div class="blk"><div class="pref-row"><div class="pref-t"><p class="sec-l" style="margin:0">Preferences</p><div class="pref-sum">${m.prefsAvailable ? "Not set up yet. Finish onboarding in the Mitipi app." : "Not available right now"}</div></div>
-        <button class="gear" aria-label="Edit preferences" disabled>${ic("gear")}</button></div></div>`;
+      prefBlock = `<div class="blk pref-b"><div class="pref-row"><div class="pref-t"><p class="sec-l" style="margin:0">Preferences</p><div class="pref-sum">${m.prefsAvailable ? "Not set up yet. Finish onboarding in the Mitipi app." : "Not available right now"}</div></div>
+        ${full ? "" : `<button class="gear" aria-label="Edit preferences" disabled>${ic("gear")}</button>`}</div></div>`;
     }
 
     /* ---- footer ---- */
-    const foot = `<div class="blk foot"><div class="fw"><span>Firmware</span><b>${m.fw === "—" ? "—" : `v${esc(m.fw)}`}</b></div><button class="fbtn" data-act="reboot" data-fk="reboot" ${dis || !m.roles.reboot ? "disabled" : ""}>${ic("power")}Reboot</button></div>`;
+    const fwTxt = m.fw === "—" ? "—" : `v${esc(m.fw)}`;
+    const rebootBtn = `<button class="fbtn" data-act="reboot" data-fk="reboot" ${dis || !m.roles.reboot ? "disabled" : ""}>${ic("power")}Reboot</button>`;
+    const foot = full
+      ? `<div class="blk dev"><p class="sec-l">Device</p>
+          <dl class="devl"><dt>Serial</dt><dd>${esc(m.serial) || "—"}</dd><dt>Firmware</dt><dd>${fwTxt}</dd><dt>${off ? "Last seen" : "State"}</dt><dd>${off ? esc(m.lastSeen || "—") : m.mode === "ON" ? "On" : "Standby"}</dd></dl>
+          ${rebootBtn}</div>`
+      : `<div class="blk foot"><div class="fw"><span>Firmware</span><b>${fwTxt}</b></div>${rebootBtn}</div>`;
 
     const dlg = ui.dialog === "reboot"
       ? `<div class="dlg-scrim" data-act="cancel"><div class="dlg" role="alertdialog" aria-modal="true" aria-labelledby="${id}dt" data-stop><h3 id="${id}dt">Reboot ${esc(m.name)}?</h3><p>KEVIN® goes offline for about a minute, then returns to its current mode.</p><div class="acts"><button data-act="cancel" data-fk="dlg-cancel">Cancel</button><button class="danger" data-act="reboot-yes" data-fk="dlg-reboot">Reboot</button></div></div></div>`
       : ui.dialog === "info" ? this._moreInfo(m, false) : "";
 
-    return `<div class="kv ${layout} ${playing ? "playing" : ""}">
-      ${dlg}
-      <div class="kv-head" data-act="info" data-fk="info" role="button" tabindex="0" aria-label="More info for ${esc(m.name)}"><div class="kv-word">${kevinGlyph()}<span class="grad">KEVIN</span><sup>®</sup></div>${live}</div>
-      <div class="kv-stage ${playing ? "playing" : ""}">
-        <div class="scene" data-anim="scene" data-v="${vis}">${layer(id, "day")}${layer(id, "night")}${layer(id, "off")}${foreground(id)}
+    const head = `<div class="kv-head" data-act="info" data-fk="info" role="button" tabindex="0" aria-label="More info for ${esc(m.name)}"><div class="kv-word">${kevinGlyph()}<span class="grad">KEVIN</span><sup>®</sup></div>${live}</div>`;
+    const stageHtml = `<div class="kv-stage ${playing ? "playing" : ""}">
+        <div class="scene" data-anim="scene" data-v="${vis}">${layer(id, "day")}${layer(id, "night")}${layer(id, "off")}${foreground()}
           <div class="scene-txt"><div class="kv-name">${esc(m.name)}</div><div class="kv-serial">${esc(m.serial)}</div></div></div>
         <div class="strip ${busy ? "busy" : ""}" data-anim="strip" data-v="${vis}" ${busy ? 'aria-busy="true"' : ""}>
           <div class="track" role="switch" tabindex="${dis ? -1 : 0}" aria-checked="${vis === "on"}" aria-disabled="${dis ? "true" : "false"}" aria-label="Awake. Drag, tap or use the arrow keys" data-track data-fk="track">
@@ -933,10 +1058,23 @@ class KevinPresenceCard extends HTMLElement {
             <span class="thumb ${busy ? "busy" : ""}" data-anim="thumb" data-v="${vis}">${thumbIcon}</span></div>
           <span class="state" aria-live="polite">${stateTxt}</span>
         </div>
-      </div>
+      </div>`;
+    const subBlock = `<div class="blk sub-b"><p class="sec-l">Subscription</p><div class="sub">${ring}<div class="subtxt">${subTxt}</div></div></div>`;
+
+    /* Full flows its blocks through balanced columns (CSS multi-column), so a wide section has
+       no holes and the reading and focus order stays: window, now playing, subscription,
+       device, schedule, preferences. */
+    if (full) {
+      return `<div class="kv full ${playing ? "playing" : ""}">
+      ${dlg}${head}
+      <div class="fcols">${stageHtml}${nowBlock}${subBlock}${foot}${schedBlock}${prefBlock}</div></div>`;
+    }
+
+    return `<div class="kv ${variant} ${playing ? "playing" : ""} ${ui.prefsOpen ? "prefs-open" : ""}">
+      ${dlg}${head}${stageHtml}
       <div class="kv-body">
         ${nowBlock}
-        <div class="blk"><p class="sec-l">Subscription</p><div class="sub">${ring}<div class="subtxt">${subTxt}</div></div></div>
+        ${subBlock}
         ${schedBlock}
         ${prefBlock}
         ${foot}
@@ -1185,8 +1323,10 @@ class KevinPresenceCard extends HTMLElement {
 /* ======================================================================= */
 class KevinPresenceCardEditor extends HTMLElement {
   setConfig(config) {
-    const layout = config.layout || LEGACY_SIZE_TO_LAYOUT[config.size] || "standard";
-    this._config = { ...config, layout };
+    const variant = variantOf(config);
+    this._config = { ...config, variant };
+    delete this._config.layout;
+    delete this._config.size;
     this._renderEditor();
   }
 
@@ -1199,14 +1339,14 @@ class KevinPresenceCardEditor extends HTMLElement {
     return [
       { name: "entity", required: true, selector: { entity: { integration: DOMAIN, domain: "switch" } } },
       {
-        name: "layout",
+        name: "variant",
         selector: {
           select: {
             mode: "dropdown",
             options: [
-              { value: "compact", label: "Compact tile (6 × 1)" },
-              { value: "standard", label: "Standard (12 columns)" },
-              { value: "full", label: "Full width" },
+              { value: "minimal", label: "Minimal tile (6 × 1)" },
+              { value: "standard", label: "Standard" },
+              { value: "full", label: "Full (detail unfolded)" },
             ],
           },
         },
@@ -1220,15 +1360,17 @@ class KevinPresenceCardEditor extends HTMLElement {
     if (!this._form) {
       this._form = document.createElement("ha-form");
       this._form.computeLabel = (s) =>
-        ({ entity: "KEVIN® device (power entity)", layout: "Layout", name: "Name (optional)" })[s.name] || s.name;
+        ({ entity: "KEVIN® device (power entity)", variant: "Variant", name: "Name (optional)" })[s.name] || s.name;
       this._form.addEventListener("value-changed", (ev) => {
         const value = { ...ev.detail.value };
         delete value.size;
+        delete value.layout;
         delete value.theme;
         if (!value.name) delete value.name;
         this._config = { ...this._config, ...value };
         if (!value.name) delete this._config.name;
         delete this._config.size;
+        delete this._config.layout;
         delete this._config.theme;
         this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config }, bubbles: true, composed: true }));
       });
@@ -1253,10 +1395,10 @@ if (!lovelaceGlobal.customCards.some((entry) => entry.type === CARD_TYPE)) {
   lovelaceGlobal.customCards.push({
     type: CARD_TYPE,
     name: "KEVIN® Presence",
-    description: "KEVIN® presence simulator: day-night switch, now playing, subscription, schedule and preferences.",
+    description: "KEVIN® presence simulator: minimal tile, standard or full card with the day-night switch, now playing, subscription, schedule and preferences.",
     preview: true,
     documentationURL: "https://github.com/vasyl127/mitipi-kevin-ha",
   });
 }
 
-export { KevinPresenceCard, KevinPresenceCardEditor, resolveEntities, readSubscription, subInfo, normalizeWindows };
+export { KevinPresenceCard, KevinPresenceCardEditor, resolveEntities, readSubscription, subInfo, normalizeWindows, variantOf };
