@@ -2,12 +2,14 @@
 
 # Mitipi Kevin for Home Assistant (HACS)
 
+> **Stage build.** This repository talks to the **stage** Kevin API (`https://stage-mitipi-api.teamvoy.com/api`) and is meant for testing. The production integration is [teamvoydev/mitipi-kevin](https://github.com/teamvoydev/mitipi-kevin).
+
 Production-oriented custom integration that connects Home Assistant to **Mitipi Kevin** through the Kevin HTTP API only. Home Assistant never talks to Auth0, Cognito, AWS Lambda, MQTT, or legacy AWS routes directly—credentials are exchanged once with `POST /v1/auth/login`, and all device traffic uses Bearer + `x-auth0-id-token` headers on Kevin API paths.
 
 ## HACS installation
 
 1. In HACS → **Custom repositories**, add `https://github.com/vasyl127/mitipi-kevin-ha` as category **Integration**.
-2. Install **Mitipi Kevin** and restart Home Assistant.
+2. Install **Mitipi Kevin (Stage)** and restart Home Assistant.
 3. Go to **Settings → Devices & services → Add integration** and search for **Mitipi Kevin**.
 
 Alternatively, copy `custom_components/mitipi_kevin` into your Home Assistant `config/custom_components/` directory and restart.
@@ -20,7 +22,7 @@ On Home Assistant 2026.3 and later, the integration also points the HACS update 
 
 ## Configuration flow
 
-The config flow collects **email** and **password** only. All traffic uses the fixed Kevin API base URL (`https://mitipi.marmash.dev/api`); the host is not user-configurable.
+The config flow collects **email** and **password** only. All traffic uses the fixed Kevin API base URL of this build (`https://stage-mitipi-api.teamvoy.com/api`, set in `custom_components/mitipi_kevin/environment.py`); the host is not user-configurable.
 
 On submit, the integration validates credentials by logging in and calling `GET /v1/devices`. Access and ID tokens are kept **in memory only** and are not written to the config entry or logs.
 

@@ -143,4 +143,4 @@ async def test_uses_repository_id_as_hacs_unique_id(hass, enable_local_brands) -
     entity_id = _register_hacs_update_entity(hass, repo_id=repo_id)
     assert await async_fix_hacs_update_icon(hass) is True
     assert hass.data[DATA_CUSTOMIZE].get(entity_id)["entity_picture"] == LOCAL_ENTITY_PICTURE
-    assert GITHUB_REPOSITORY == "vasyl127/mitipi-kevin-ha"
+    assert GITHUB_REPOSITORY.count("/") == 1

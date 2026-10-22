@@ -23,11 +23,11 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 
 from .const import DOMAIN, INTEGRATION_VERSION
+from .environment import GITHUB_REPOSITORY
 from .update_icon import async_fix_hacs_update_icon
 
 _LOGGER = logging.getLogger(__name__)
 
-GITHUB_REPOSITORY = "vasyl127/mitipi-kevin-ha"
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/releases/latest"
 RELEASES_URL = f"https://github.com/{GITHUB_REPOSITORY}/releases"
 CHECK_INTERVAL = timedelta(hours=6)

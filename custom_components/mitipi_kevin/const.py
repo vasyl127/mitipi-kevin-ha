@@ -2,11 +2,13 @@
 
 from datetime import timedelta
 
-DOMAIN = "mitipi_kevin"
-INTEGRATION_VERSION = "0.6.1"
+from .environment import KEVIN_API_BASE_URL as ENVIRONMENT_API_BASE_URL
 
-# Single approved Kevin API host; not user-configurable.
-KEVIN_API_BASE_URL = "https://mitipi.marmash.dev/api"
+DOMAIN = "mitipi_kevin"
+INTEGRATION_VERSION = "0.6.2"
+
+# Single approved Kevin API host for this build (stage or production); not user-configurable.
+KEVIN_API_BASE_URL = ENVIRONMENT_API_BASE_URL
 
 # Legacy config-entry key (removed on migration from version 1).
 CONF_BASE_URL = "base_url"

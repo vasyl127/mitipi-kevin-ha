@@ -1,6 +1,6 @@
 {
   "domain": "mitipi_kevin",
-  "name": "Mitipi Kevin",
+  "name": "Mitipi Kevin (Stage)",
   "codeowners": [
     "@vasyl127"
   ],
@@ -10,5 +10,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/vasyl127/mitipi-kevin-ha/issues",
   "requirements": [],
-  "version": "0.6.1"
+  "version": "0.6.2"
 }
