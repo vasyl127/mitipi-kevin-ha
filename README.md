@@ -28,6 +28,28 @@ On submit, the integration validates credentials by logging in and calling `GET 
 
 If the API returns `401` during normal operation, Home Assistant starts a **re-authentication** flow that asks only for email and password.
 
+## Upgrading, downgrading and removal
+
+- **Upgrade:** install the new release from **Settings → Updates** (or HACS) and restart Home Assistant. Entity IDs and `unique_id`s stay the same across releases, so dashboards and automations keep working.
+- **Downgrade:** in HACS open **Mitipi Kevin → ⋮ → Redownload**, pick the earlier version and restart. Every published release (v0.2.0 and later) reads the same config entry format, so no re-setup is needed.
+- **Removal:** delete the integration under **Settings → Devices & services**, then remove it in HACS and restart. Removing the entry deletes its devices and entities from Home Assistant; nothing changes on the Kevin devices or in the Mitipi account.
+
+## Diagnostics
+
+**Settings → Devices & services → Mitipi Kevin → ⋮ → Download diagnostics** saves a JSON file to attach to a support request. It contains the integration version and build environment, the Kevin API it talks to, poll health (last update result, failed polls in a row, devices read through the `/state` fallback, preferences state), the subscription plan and status, and per device its API id, availability, mode, firmware, scene counts and stale polls.
+
+It never contains the e-mail address, the password, API tokens or device names: the entry title and credentials are replaced with `**REDACTED**`, and tokens are never stored where diagnostics could read them.
+
+## Known limitations
+
+- **Cloud polling.** State is read every 60 seconds (scenes every fifth poll), so a change made in the Mitipi app or on the device shows up within about a minute. A mode change made from Home Assistant settles faster: the integration re-reads that Kevin every 1.5 s for up to 30 s.
+- **Internet and the Kevin API are required.** There is no local control. During an outage entities keep their last state for 3 polls, then become unavailable.
+- **Commands need the Kevin online.** Power, scene and reboot actions are accepted by the API and confirmed by the next read; an offline device does not change state.
+- **Controls exposed:** power, scene and reboot per device, plus account preferences through the `mitipi_kevin.set_preferences` service. There is no separate light entity.
+- **Password storage.** Email-and-password setup keeps the password in the config entry (Home Assistant's `.storage`) so the integration can sign in again after a restart. Access and ID tokens stay in memory.
+- **One build, one API.** This build always talks to the API named at the top of this README; stage and production are separate repositories and are installed separately.
+- **One entry per Kevin account.** Adding the same account twice is refused.
+
 ## Entity model
 
 Each Kevin device exposes entities with stable `unique_id` = `{apiDeviceId}_{role}`:

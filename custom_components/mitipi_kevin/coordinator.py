@@ -142,6 +142,16 @@ class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot
         _LOGGER.debug("Device %s scenes unavailable (HTTP %s)", device_id, status)
         return None
 
+    @property
+    def failed_polls(self) -> int:
+        """Polls in a row that failed as a whole (0 after a good poll)."""
+        return self._failed_polls
+
+    @property
+    def summary_fallback_devices(self) -> frozenset[str]:
+        """Devices currently read through /state and /capabilities instead of /summary."""
+        return frozenset(self._summary_fallback_logged)
+
     def _previous(self, device_id: str) -> KevinDeviceSnapshot | None:
         return (self.data or {}).get(device_id)
 
