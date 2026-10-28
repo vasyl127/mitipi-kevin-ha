@@ -5,7 +5,7 @@ from datetime import timedelta
 from .environment import KEVIN_API_BASE_URL as ENVIRONMENT_API_BASE_URL
 
 DOMAIN = "mitipi_kevin"
-INTEGRATION_VERSION = "0.6.2"
+INTEGRATION_VERSION = "0.7.0"
 
 # Single approved Kevin API host for this build (stage or production); not user-configurable.
 KEVIN_API_BASE_URL = ENVIRONMENT_API_BASE_URL
