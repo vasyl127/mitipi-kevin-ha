@@ -69,7 +69,6 @@ DEVICE_TWO = {
 
 ALLOWED_PATH_PATTERNS = (
     re.compile(r"^/v1/auth/login$"),
-    re.compile(r"^/v1/auth/methods$"),
     re.compile(r"^/v1/auth/ha/token$"),
     re.compile(r"^/v1/subscription$"),
     re.compile(r"^/v1/preferences$"),
@@ -144,11 +143,6 @@ class KevinApiStub:
         self.login_requests: list[dict[str, Any]] = []
         self.login_status = 200
         self._devices_401_once = False
-        # GET /v1/auth/methods; None = an older API without the endpoint (404).
-        self.sign_in_methods: dict[str, Any] | None = {
-            "emailPassword": {"enabled": True},
-            "mitipiSignIn": {"enabled": False, "providers": []},
-        }
         # Authorization headers seen on GET /v1/devices, and access tokens to answer 401.
         self.devices_auth_headers: list[dict[str, str]] = []
         self.rejected_access_tokens: set[str] = set()
@@ -214,14 +208,6 @@ class KevinApiStub:
     def apply(self, mock: aioresponses) -> None:
         """Register handlers on aioresponses."""
 
-        def methods_handler(url: str, **kwargs) -> CallbackResult:
-            self._record(url)
-            if self.sign_in_methods is None:
-                return CallbackResult(status=404, payload={"error": "not_found"})
-            return CallbackResult(status=200, payload=self.sign_in_methods)
-
-        mock.get(f"{self.base_url}/v1/auth/methods", callback=methods_handler, repeat=True)
-
         def login_handler(url: str, **kwargs) -> CallbackResult:
             self._record(url)
             self.login_count += 1
@@ -233,7 +219,7 @@ class KevinApiStub:
             )
             if self.login_status != 200:
                 return CallbackResult(
-                    status=self.login_status, payload={"error": "sign_in_method_disabled"}
+                    status=self.login_status, payload={"error": "invalid_credentials"}
                 )
             return CallbackResult(
                 status=200,

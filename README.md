@@ -24,19 +24,14 @@ On Home Assistant 2026.3 and later, the integration also points the HACS update 
 
 All traffic uses the fixed Kevin API base URL of this build (`https://stage-mitipi-api.teamvoy.com/api`, set in `custom_components/mitipi_kevin/environment.py`); the host is not user-configurable.
 
-Adding the integration first asks how to sign in. Which options appear is decided by the Kevin API (`GET /v1/auth/methods`), where Mitipi admins switch each method on or off:
+Adding the integration opens the **Sign in with Mitipi** page in a new browser tab. Sign in there with Google, Apple or your KEVIN® e-mail and password; the tab then returns to Home Assistant through My Home Assistant and the entry is created. Home Assistant stores the account's tokens (refreshed automatically) and never sees a password. This needs the `my` integration, which is part of `default_config`. Which of Google, Apple and e-mail the page offers is set on the Kevin API.
 
-- **Sign in with Mitipi (Google, Apple or email):** Home Assistant opens the Mitipi sign-in page in a new browser tab. After signing in there, the tab returns to Home Assistant through My Home Assistant and the entry is created. Home Assistant stores the account's tokens (refreshed automatically) and never sees a password. This needs the `my` integration, which is part of `default_config`.
-- **Email and password:** the KEVIN® e-mail and password, validated by logging in and calling `GET /v1/devices`. Access and ID tokens are kept **in memory only**; the password is stored in the entry so the integration can sign in again.
-
-When only one method is available, the flow goes straight to it. An older Kevin API without `/v1/auth/methods` gets the e-mail and password form.
-
-If the API rejects the stored credentials (password changed, tokens revoked, or the method was switched off), Home Assistant starts **re-authentication**, which offers the same choice and updates the existing entry. Signing in with a different KEVIN® account than the entry belongs to is refused.
+Entries created with e-mail and password by releases before v0.7.0 keep working with their stored password. When the API rejects the stored credentials (password changed or tokens revoked), Home Assistant starts **re-authentication**: it opens the same Mitipi sign-in page and updates the existing entry, which from then on uses tokens instead of the password. Signing in with a different KEVIN® account than the entry belongs to is refused.
 
 ## Upgrading, downgrading and removal
 
 - **Upgrade:** install the new release from **Settings → Updates** (or HACS) and restart Home Assistant. Entity IDs and `unique_id`s stay the same across releases, so dashboards and automations keep working.
-- **Downgrade:** in HACS open **Mitipi Kevin → ⋮ → Redownload**, pick the earlier version and restart. E-mail and password entries work with every published release (v0.2.0 and later), so no re-setup is needed. Entries created with **Sign in with Mitipi** need the release that introduced it or later; after downgrading below it, remove them and add the account again with email and password.
+- **Downgrade:** in HACS open **Mitipi Kevin → ⋮ → Redownload**, pick the earlier version and restart. E-mail and password entries work with every published release (v0.2.0 and later), so no re-setup is needed. Entries created with **Sign in with Mitipi** need v0.7.0 or later; after downgrading below it, remove them and add the account again with e-mail and password.
 - **Removal:** delete the integration under **Settings → Devices & services**, then remove it in HACS and restart. Removing the entry deletes its devices and entities from Home Assistant; nothing changes on the Kevin devices or in the Mitipi account.
 
 ## Diagnostics
@@ -51,8 +46,8 @@ It also says which sign-in method the entry uses. It never contains the e-mail a
 - **Internet and the Kevin API are required.** There is no local control. During an outage entities keep their last state for 3 polls, then become unavailable.
 - **Commands need the Kevin online.** Power, scene and reboot actions are accepted by the API and confirmed by the next read; an offline device does not change state.
 - **Controls exposed:** power, scene and reboot per device, plus account preferences through the `mitipi_kevin.set_preferences` service. There is no separate light entity.
-- **Credential storage.** Email-and-password setup keeps the password in the config entry (Home Assistant's `.storage`) so the integration can sign in again after a restart; its access and ID tokens stay in memory. Sign in with Mitipi stores no password, only the account's access, ID and refresh tokens in the config entry.
-- **Sign in with Mitipi needs a browser and My Home Assistant.** The sign-in returns through `my.home-assistant.io`; installations without the `my` integration can use email and password.
+- **Credential storage.** Sign in with Mitipi stores no password, only the account's access, ID and refresh tokens in the config entry (Home Assistant's `.storage`). E-mail and password entries from releases before v0.7.0 keep the password there until their next re-authentication.
+- **Sign in with Mitipi needs a browser and My Home Assistant.** The sign-in returns through `my.home-assistant.io`; installations without the `my` integration cannot add the account.
 - **One build, one API.** This build always talks to the API named at the top of this README; stage and production are separate repositories and are installed separately.
 - **One entry per Kevin account.** Adding the same account twice is refused.
 

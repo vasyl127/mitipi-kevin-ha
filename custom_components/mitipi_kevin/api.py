@@ -24,7 +24,6 @@ _LOGGER = logging.getLogger(__name__)
 _IDEMPOTENCY_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 _ALLOWED_PATH_PATTERNS = (
     re.compile(r"^/v1/auth/login$"),
-    re.compile(r"^/v1/auth/methods$"),
     re.compile(r"^/v1/subscription$"),
     re.compile(r"^/v1/preferences$"),
     re.compile(r"^/v1/devices$"),
@@ -63,38 +62,6 @@ class TokenProvider(Protocol):
         self, *, rejected_access_token: str | None = None
     ) -> tuple[str, str]:
         """Return (access_token, id_token); refresh when the given token was rejected."""
-
-
-class SignInMethods:
-    """What the Kevin API currently allows Home Assistant to sign in with."""
-
-    def __init__(self, *, email_password: bool, mitipi_sign_in: bool, providers: list[str]) -> None:
-        self.email_password = email_password
-        self.mitipi_sign_in = mitipi_sign_in
-        self.providers = providers
-
-    @classmethod
-    def from_response(cls, data: Any) -> SignInMethods:
-        """Parse GET /v1/auth/methods; anything unexpected means password only."""
-        if not isinstance(data, dict):
-            return cls.password_only()
-        password = data.get("emailPassword")
-        mitipi = data.get("mitipiSignIn")
-        providers = mitipi.get("providers") if isinstance(mitipi, dict) else None
-        return cls(
-            email_password=bool(password.get("enabled")) if isinstance(password, dict) else True,
-            mitipi_sign_in=bool(mitipi.get("enabled")) if isinstance(mitipi, dict) else False,
-            providers=(
-                [p for p in providers if isinstance(p, str)]
-                if isinstance(providers, list)
-                else []
-            ),
-        )
-
-    @classmethod
-    def password_only(cls) -> SignInMethods:
-        """Behaviour of API releases without /v1/auth/methods."""
-        return cls(email_password=True, mitipi_sign_in=False, providers=[])
 
 
 class KevinApiClient:
@@ -152,20 +119,6 @@ class KevinApiClient:
         if not self._access_token:
             await self.login()
 
-    async def get_sign_in_methods(self) -> SignInMethods:
-        """Sign-in options the API offers (unauthenticated)."""
-        try:
-            async with self._session.get(
-                self._url("/v1/auth/methods"), headers={HEADER_CLIENT: CLIENT_ID}
-            ) as resp:
-                if resp.status == 404:
-                    return SignInMethods.password_only()
-                if resp.status >= 400:
-                    raise KevinConnectionError
-                return SignInMethods.from_response(await resp.json())
-        except aiohttp.ClientError as err:
-            raise KevinConnectionError from err
-
     async def login(self, *, rejected_access_token: str | None = None) -> None:
         """Obtain access and ID tokens."""
         if self._token_provider is not None:
@@ -182,9 +135,7 @@ class KevinApiClient:
                 json={"email": self._email, "password": self._password},
                 headers={HEADER_CLIENT: CLIENT_ID},
             ) as resp:
-                # 403: an admin switched e-mail and password sign-in off; the user has
-                # to sign in again with another method.
-                if resp.status in (401, 403):
+                if resp.status == 401:
                     raise KevinAuthError
                 if resp.status >= 500:
                     raise KevinConnectionError
@@ -225,9 +176,7 @@ class KevinApiClient:
                 headers.update(extra_headers)
             url = self._url(path)
             try:
-                async with self._session.request(
-                    method, url, json=json, headers=headers
-                ) as resp:
+                async with self._session.request(method, url, json=json, headers=headers) as resp:
                     last_status = resp.status
                     if resp.status == 401 and auth:
                         if attempt == 0:
@@ -383,9 +332,7 @@ class KevinApiClient:
         if mode not in (MODE_ON, MODE_STAND_BY):
             msg = "Invalid mode"
             raise KevinApiError(msg)
-        await self._post_device_action(
-            device_id, "set-mode", {"mode": mode}, idempotency_key
-        )
+        await self._post_device_action(device_id, "set-mode", {"mode": mode}, idempotency_key)
 
     async def apply_scene(
         self,

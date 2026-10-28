@@ -1,4 +1,4 @@
-"""Sign in with Mitipi: menu, OAuth (code + PKCE), token refresh and re-auth (MA-1023..1025)."""
+"""Sign in with Mitipi: OAuth (code + PKCE), token refresh and re-auth (MA-1023..1025)."""
 
 from __future__ import annotations
 
@@ -37,14 +37,6 @@ from tests.conftest import (
 )
 
 TOKEN_URL = f"{TEST_BASE_URL}/v1/auth/ha/token"
-BOTH = {
-    "emailPassword": {"enabled": True},
-    "mitipiSignIn": {"enabled": True, "providers": ["google", "apple", "password"]},
-}
-MITIPI_ONLY = {
-    "emailPassword": {"enabled": False},
-    "mitipiSignIn": {"enabled": True, "providers": ["google"]},
-}
 
 
 def id_token(email: str | None = TEST_EMAIL, sub: str = "auth0|user-1") -> str:
@@ -85,10 +77,8 @@ async def _external_step(hass: HomeAssistant, entry=None, result=None):
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
         )
-    if result["type"] == FlowResultType.MENU:
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], {"next_step_id": "mitipi"}
-        )
+    if result["type"] == FlowResultType.FORM and result["step_id"] == "reauth_confirm":
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
     assert result["type"] == FlowResultType.EXTERNAL_STEP, result
     return result
 
@@ -117,67 +107,32 @@ async def _finish_oauth(
     return final, {**{k: v for k, v in query.items()}, **{f"token_{k}": v for k, v in sent.items()}}
 
 
-async def test_menu_offers_both_methods_when_the_api_allows_them(
+async def test_setup_goes_straight_to_the_mitipi_sign_in_page(
+    hass: HomeAssistant, kevin_stub: KevinApiStub, with_my: None
+) -> None:
+    with aioresponses() as mock:
+        kevin_stub.apply(mock)
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+    assert result["type"] == FlowResultType.EXTERNAL_STEP
+    assert result["step_id"] == "auth"
+    assert kevin_stub.requested_paths == [], "no e-mail/password form, no API call before sign-in"
+
+
+async def test_missing_my_home_assistant_aborts_with_a_reason(
     hass: HomeAssistant, kevin_stub: KevinApiStub
 ) -> None:
-    kevin_stub.sign_in_methods = BOTH
-    with aioresponses() as mock:
-        kevin_stub.apply(mock)
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": config_entries.SOURCE_USER}
-        )
-        assert result["type"] == FlowResultType.MENU
-        assert result["step_id"] == "user"
-        assert result["menu_options"] == ["mitipi", "password"]
-
-        password = await hass.config_entries.flow.async_configure(
-            result["flow_id"], {"next_step_id": "password"}
-        )
-    assert password["type"] == FlowResultType.FORM
-    assert password["step_id"] == "password"
-
-
-async def test_no_method_and_missing_my_home_assistant_abort_with_a_reason(
-    hass: HomeAssistant, kevin_stub: KevinApiStub
-) -> None:
-    kevin_stub.sign_in_methods = {
-        "emailPassword": {"enabled": False},
-        "mitipiSignIn": {"enabled": False, "providers": []},
-    }
-    with aioresponses() as mock:
-        kevin_stub.apply(mock)
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": config_entries.SOURCE_USER}
-        )
-    assert result == {**result, "type": FlowResultType.ABORT, "reason": "no_sign_in_method"}
-
-    kevin_stub.sign_in_methods = MITIPI_ONLY
-    with aioresponses() as mock:
-        kevin_stub.apply(mock)
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": config_entries.SOURCE_USER}
-        )
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
     assert result["type"] == FlowResultType.ABORT
     assert result["reason"] == "my_home_assistant_required"
-
-
-async def test_an_older_api_without_methods_keeps_the_password_form(
-    hass: HomeAssistant, kevin_stub: KevinApiStub
-) -> None:
-    kevin_stub.sign_in_methods = None
-    with aioresponses() as mock:
-        kevin_stub.apply(mock)
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": config_entries.SOURCE_USER}
-        )
-    assert result["type"] == FlowResultType.FORM
-    assert result["step_id"] == "password"
 
 
 async def test_sign_in_with_mitipi_creates_a_token_entry(
     hass: HomeAssistant, kevin_stub: KevinApiStub, with_my: None
 ) -> None:
-    kevin_stub.sign_in_methods = MITIPI_ONLY
     kevin_stub.set_devices([DEVICE_ONE])
     with aioresponses() as mock:
         kevin_stub.apply(mock)
@@ -225,7 +180,6 @@ async def test_the_same_account_cannot_be_added_twice_across_methods(
         unique_id=TEST_EMAIL.casefold(),
         data={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
     ).add_to_hass(hass)
-    kevin_stub.sign_in_methods = MITIPI_ONLY
     kevin_stub.set_devices([])
     with aioresponses() as mock:
         kevin_stub.apply(mock)
@@ -240,7 +194,6 @@ async def test_the_same_account_cannot_be_added_twice_across_methods(
 async def test_rejected_tokens_abort_instead_of_creating_a_broken_entry(
     hass: HomeAssistant, kevin_stub: KevinApiStub, with_my: None
 ) -> None:
-    kevin_stub.sign_in_methods = MITIPI_ONLY
     kevin_stub.rejected_access_tokens = {"oauth-access-1"}
     with aioresponses() as mock:
         kevin_stub.apply(mock)
@@ -359,24 +312,25 @@ async def test_an_unreachable_token_endpoint_retries_later(
     assert hass.config_entries.flow.async_progress() == []
 
 
-async def test_password_entry_reauths_when_an_admin_switches_password_sign_in_off(
+async def test_an_existing_password_entry_keeps_working(
     hass: HomeAssistant, kevin_stub: KevinApiStub
 ) -> None:
+    """Entries from releases before 0.7.0 still sign in with their stored password."""
     entry = MockConfigEntry(
         domain=DOMAIN,
+        version=2,
         unique_id=TEST_EMAIL.casefold(),
         data={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
     )
     entry.add_to_hass(hass)
-    kevin_stub.login_status = 403
+    kevin_stub.set_devices([DEVICE_ONE])
     with aioresponses() as mock:
         kevin_stub.apply(mock)
-        await hass.config_entries.async_setup(entry.entry_id)
+        assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-    assert entry.state is ConfigEntryState.SETUP_ERROR
-    assert [f["context"]["source"] for f in hass.config_entries.flow.async_progress()] == [
-        config_entries.SOURCE_REAUTH
-    ]
+    assert entry.state is ConfigEntryState.LOADED
+    assert kevin_stub.login_count == 1
+    assert hass.config_entries.flow.async_progress() == []
 
 
 async def test_reauth_switches_a_password_entry_to_sign_in_with_mitipi(
@@ -389,14 +343,13 @@ async def test_reauth_switches_a_password_entry_to_sign_in_with_mitipi(
         data={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
     )
     entry.add_to_hass(hass)
-    kevin_stub.sign_in_methods = BOTH
     kevin_stub.set_devices([])
     with aioresponses() as mock:
         kevin_stub.apply(mock)
-        menu = await entry.start_reauth_flow(hass)
-        assert menu["type"] == FlowResultType.MENU
-        assert menu["step_id"] == "reauth_confirm"
-        result = await _external_step(hass, result=menu)
+        confirm = await entry.start_reauth_flow(hass)
+        assert confirm["type"] == FlowResultType.FORM
+        assert confirm["step_id"] == "reauth_confirm"
+        result = await _external_step(hass, result=confirm)
         result, _ = await _finish_oauth(hass, mock, result, token_response())
 
     assert result["type"] == FlowResultType.ABORT
@@ -411,7 +364,6 @@ async def test_reauth_with_another_mitipi_account_is_refused(
 ) -> None:
     entry = _oauth_entry(time.time() + 3600)
     entry.add_to_hass(hass)
-    kevin_stub.sign_in_methods = MITIPI_ONLY
     kevin_stub.set_devices([])
     with aioresponses() as mock:
         kevin_stub.apply(mock)
