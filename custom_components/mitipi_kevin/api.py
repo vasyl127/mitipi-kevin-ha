@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from typing import Any, Protocol
 
 import aiohttp
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -24,6 +24,7 @@ _LOGGER = logging.getLogger(__name__)
 _IDEMPOTENCY_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 _ALLOWED_PATH_PATTERNS = (
     re.compile(r"^/v1/auth/login$"),
+    re.compile(r"^/v1/auth/methods$"),
     re.compile(r"^/v1/subscription$"),
     re.compile(r"^/v1/preferences$"),
     re.compile(r"^/v1/devices$"),
@@ -55,6 +56,47 @@ class KevinSubscriptionReadForbidden(KevinApiError):
     """Account subscription read is forbidden (403 subscription_read_forbidden)."""
 
 
+class TokenProvider(Protocol):
+    """Source of Auth0 tokens for entries created with Sign in with Mitipi."""
+
+    async def async_get_tokens(
+        self, *, rejected_access_token: str | None = None
+    ) -> tuple[str, str]:
+        """Return (access_token, id_token); refresh when the given token was rejected."""
+
+
+class SignInMethods:
+    """What the Kevin API currently allows Home Assistant to sign in with."""
+
+    def __init__(self, *, email_password: bool, mitipi_sign_in: bool, providers: list[str]) -> None:
+        self.email_password = email_password
+        self.mitipi_sign_in = mitipi_sign_in
+        self.providers = providers
+
+    @classmethod
+    def from_response(cls, data: Any) -> SignInMethods:
+        """Parse GET /v1/auth/methods; anything unexpected means password only."""
+        if not isinstance(data, dict):
+            return cls.password_only()
+        password = data.get("emailPassword")
+        mitipi = data.get("mitipiSignIn")
+        providers = mitipi.get("providers") if isinstance(mitipi, dict) else None
+        return cls(
+            email_password=bool(password.get("enabled")) if isinstance(password, dict) else True,
+            mitipi_sign_in=bool(mitipi.get("enabled")) if isinstance(mitipi, dict) else False,
+            providers=(
+                [p for p in providers if isinstance(p, str)]
+                if isinstance(providers, list)
+                else []
+            ),
+        )
+
+    @classmethod
+    def password_only(cls) -> SignInMethods:
+        """Behaviour of API releases without /v1/auth/methods."""
+        return cls(email_password=True, mitipi_sign_in=False, providers=[])
+
+
 class KevinApiClient:
     """HTTP client for the Mitipi Kevin API."""
 
@@ -62,8 +104,10 @@ class KevinApiClient:
         self,
         session: aiohttp.ClientSession,
         base_url: str,
-        email: str,
-        password: str,
+        email: str | None = None,
+        password: str | None = None,
+        *,
+        token_provider: TokenProvider | None = None,
     ) -> None:
         self._session = session
         normalized = base_url.rstrip("/")
@@ -73,6 +117,7 @@ class KevinApiClient:
         self._base_url = normalized
         self._email = email
         self._password = password
+        self._token_provider = token_provider
         self._access_token: str | None = None
         self._id_token: str | None = None
 
@@ -107,8 +152,29 @@ class KevinApiClient:
         if not self._access_token:
             await self.login()
 
-    async def login(self) -> None:
+    async def get_sign_in_methods(self) -> SignInMethods:
+        """Sign-in options the API offers (unauthenticated)."""
+        try:
+            async with self._session.get(
+                self._url("/v1/auth/methods"), headers={HEADER_CLIENT: CLIENT_ID}
+            ) as resp:
+                if resp.status == 404:
+                    return SignInMethods.password_only()
+                if resp.status >= 400:
+                    raise KevinConnectionError
+                return SignInMethods.from_response(await resp.json())
+        except aiohttp.ClientError as err:
+            raise KevinConnectionError from err
+
+    async def login(self, *, rejected_access_token: str | None = None) -> None:
         """Obtain access and ID tokens."""
+        if self._token_provider is not None:
+            self._access_token, self._id_token = await self._token_provider.async_get_tokens(
+                rejected_access_token=rejected_access_token
+            )
+            return
+        if not self._email or not self._password:
+            raise KevinAuthError
         url = self._url("/v1/auth/login")
         try:
             async with self._session.post(
@@ -116,7 +182,9 @@ class KevinApiClient:
                 json={"email": self._email, "password": self._password},
                 headers={HEADER_CLIENT: CLIENT_ID},
             ) as resp:
-                if resp.status == 401:
+                # 403: an admin switched e-mail and password sign-in off; the user has
+                # to sign in again with another method.
+                if resp.status in (401, 403):
                     raise KevinAuthError
                 if resp.status >= 500:
                     raise KevinConnectionError
@@ -145,9 +213,12 @@ class KevinApiClient:
         """Perform an HTTP request with a single 401 re-login retry."""
         last_status = 0
         last_body: Any = None
+        rejected: str | None = None
         for attempt in range(2):
-            if auth and not self._access_token:
-                await self.login()
+            # Token entries ask the provider every time: it refreshes only when expired,
+            # or when the API just rejected the token it handed out.
+            if auth and (self._token_provider is not None or not self._access_token):
+                await self.login(rejected_access_token=rejected)
             headers = self._auth_headers() if auth else {}
             headers[HEADER_CLIENT] = CLIENT_ID
             if extra_headers:
@@ -160,7 +231,8 @@ class KevinApiClient:
                     last_status = resp.status
                     if resp.status == 401 and auth:
                         if attempt == 0:
-                            await self.login()
+                            rejected = self._access_token
+                            self._access_token = None
                             continue
                         raise KevinAuthError
                     if resp.content_type == "application/json":
@@ -340,9 +412,13 @@ class KevinApiClient:
 
 def create_client(
     hass: Any,
-    email: str,
-    password: str,
+    email: str | None = None,
+    password: str | None = None,
+    *,
+    token_provider: TokenProvider | None = None,
 ) -> KevinApiClient:
     """Build a client using Home Assistant's shared aiohttp session."""
     session = async_get_clientsession(hass)
-    return KevinApiClient(session, KEVIN_API_BASE_URL, email, password)
+    return KevinApiClient(
+        session, KEVIN_API_BASE_URL, email, password, token_provider=token_provider
+    )

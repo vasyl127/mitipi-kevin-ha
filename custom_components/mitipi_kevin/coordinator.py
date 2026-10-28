@@ -355,9 +355,16 @@ class MitipiKevinCoordinator(DataUpdateCoordinator[dict[str, KevinDeviceSnapshot
 
 
 def build_client_from_entry(hass: HomeAssistant, entry: ConfigEntry) -> KevinApiClient:
-    """Create an API client from config entry data."""
-    from .api import create_client
+    """Create an API client from config entry data (password or Sign in with Mitipi)."""
+    from homeassistant.helpers import config_entry_oauth2_flow
 
+    from .api import create_client
+    from .oauth import OAuthTokenProvider, async_register_implementation, is_oauth_entry
+
+    if is_oauth_entry(entry):
+        implementation = async_register_implementation(hass)
+        session = config_entry_oauth2_flow.OAuth2Session(hass, entry, implementation)
+        return create_client(hass, token_provider=OAuthTokenProvider(hass, entry, session))
     return create_client(
         hass,
         entry.data[CONF_EMAIL],

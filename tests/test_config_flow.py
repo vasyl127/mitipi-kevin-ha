@@ -1,12 +1,13 @@
-"""Config flow tests."""
+"""Config flow tests: e-mail and password (the original method)."""
 
 from __future__ import annotations
 
 import pytest
+import voluptuous as vol
 from aioresponses import CallbackResult, aioresponses
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.data_entry_flow import FlowResultType, InvalidData
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mitipi_kevin.const import CONF_BASE_URL, CONF_EMAIL, CONF_PASSWORD, DOMAIN
@@ -17,6 +18,16 @@ from tests.conftest import (
     KevinApiStub,
     assert_allowed_kevin_paths,
 )
+
+
+async def _password_form(hass: HomeAssistant) -> dict:
+    """With only e-mail and password allowed, setup opens the form directly."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "password"
+    return result
 
 
 @pytest.mark.parametrize(
@@ -35,13 +46,11 @@ async def test_config_flow_invalid_credentials_translated(
             status=status,
             payload={"error": "invalid_credentials", "detail": "secret server detail"},
         )
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN,
-            context={"source": config_entries.SOURCE_USER},
-            data={
-                CONF_EMAIL: TEST_EMAIL,
-                CONF_PASSWORD: TEST_PASSWORD,
-            },
+        # No /v1/auth/methods mock: an unreachable or older API falls back to the form.
+        form = await _password_form(hass)
+        result = await hass.config_entries.flow.async_configure(
+            form["flow_id"],
+            user_input={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
         )
         await hass.async_block_till_done()
 
@@ -56,20 +65,16 @@ async def test_config_flow_happy_path(hass: HomeAssistant, kevin_stub: KevinApiS
     kevin_stub.set_devices([])
     with aioresponses() as mock:
         kevin_stub.apply(mock)
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN,
-            context={"source": config_entries.SOURCE_USER},
-            data={
-                CONF_EMAIL: TEST_EMAIL,
-                CONF_PASSWORD: TEST_PASSWORD,
-            },
+        form = await _password_form(hass)
+        result = await hass.config_entries.flow.async_configure(
+            form["flow_id"],
+            user_input={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
         )
 
     assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["title"] == TEST_EMAIL
     assert CONF_BASE_URL not in result["data"]
-    assert result["data"][CONF_EMAIL] == TEST_EMAIL
-    assert result["data"][CONF_PASSWORD] == TEST_PASSWORD
+    assert result["data"] == {CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD}
     assert "access-token" not in str(result["data"])
     assert_allowed_kevin_paths(kevin_stub.requested_paths)
     assert kevin_stub.login_requests[0]["url"] == f"{TEST_BASE_URL}/v1/auth/login"
@@ -77,13 +82,10 @@ async def test_config_flow_happy_path(hass: HomeAssistant, kevin_stub: KevinApiS
     # Duplicate account aborts
     with aioresponses() as mock:
         kevin_stub.apply(mock)
-        duplicate = await hass.config_entries.flow.async_init(
-            DOMAIN,
-            context={"source": config_entries.SOURCE_USER},
-            data={
-                CONF_EMAIL: TEST_EMAIL,
-                CONF_PASSWORD: TEST_PASSWORD,
-            },
+        form = await _password_form(hass)
+        duplicate = await hass.config_entries.flow.async_configure(
+            form["flow_id"],
+            user_input={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
         )
     assert duplicate["type"] == FlowResultType.ABORT
     assert duplicate["reason"] == "already_configured"
@@ -104,14 +106,19 @@ async def test_config_flow_ignores_injected_base_url(
     with aioresponses() as mock:
         mock.post(f"{evil_base}/v1/auth/login", callback=evil_login, repeat=True)
         kevin_stub.apply(mock)
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN,
-            context={"source": config_entries.SOURCE_USER},
-            data={
-                CONF_EMAIL: TEST_EMAIL,
-                CONF_PASSWORD: TEST_PASSWORD,
-                CONF_BASE_URL: evil_base,
-            },
+        form = await _password_form(hass)
+        with pytest.raises((InvalidData, vol.Invalid)):
+            await hass.config_entries.flow.async_configure(
+                form["flow_id"],
+                user_input={
+                    CONF_EMAIL: TEST_EMAIL,
+                    CONF_PASSWORD: TEST_PASSWORD,
+                    CONF_BASE_URL: evil_base,
+                },
+            )
+        result = await hass.config_entries.flow.async_configure(
+            form["flow_id"],
+            user_input={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
         )
 
     assert result["type"] == FlowResultType.CREATE_ENTRY
@@ -166,15 +173,9 @@ async def test_reauth_updates_credentials_without_duplicate_entry(
 
     with aioresponses() as mock:
         kevin_stub.apply(mock)
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN,
-            context={
-                "source": config_entries.SOURCE_REAUTH,
-                "entry_id": entry.entry_id,
-            },
-        )
+        result = await entry.start_reauth_flow(hass)
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "reauth_confirm"
+        assert result["step_id"] == "password"
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             user_input={
@@ -194,3 +195,27 @@ async def test_reauth_updates_credentials_without_duplicate_entry(
     assert login_body["email"] == TEST_EMAIL
     assert login_body["password"] == new_password
     assert kevin_stub.login_requests[-1]["url"] == f"{TEST_BASE_URL}/v1/auth/login"
+
+
+async def test_reauth_with_another_account_is_refused(
+    hass: HomeAssistant,
+    kevin_stub: KevinApiStub,
+) -> None:
+    """Re-authentication cannot move an entry to a different KEVIN account."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=TEST_EMAIL.casefold(),
+        data={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
+    )
+    entry.add_to_hass(hass)
+    kevin_stub.set_devices([])
+    with aioresponses() as mock:
+        kevin_stub.apply(mock)
+        result = await entry.start_reauth_flow(hass)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_EMAIL: "other@example.com", CONF_PASSWORD: "x"},
+        )
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "wrong_account"
+    assert entry.data[CONF_PASSWORD] == TEST_PASSWORD

@@ -3,20 +3,35 @@
     "step": {
       "user": {
         "title": "Connect to Mitipi Kevin",
-        "description": "Sign in with your Mitipi account. The integration talks only to the Kevin API.",
+        "description": "Choose how to sign in to your KEVIN® account. The integration talks only to the Kevin API.",
+        "menu_options": {
+          "mitipi": "Sign in with Mitipi (Google, Apple or email)",
+          "password": "Email and password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in to Mitipi Kevin again",
+        "description": "Home Assistant is no longer signed in to your KEVIN® account. Sign in again to keep your devices and automations working.",
+        "menu_options": {
+          "mitipi": "Sign in with Mitipi (Google, Apple or email)",
+          "password": "Email and password"
+        }
+      },
+      "password": {
+        "title": "Sign in with email and password",
+        "description": "Use the email and password of your KEVIN® account. They are stored in Home Assistant so the integration can sign in again on its own.",
         "data": {
           "email": "Email",
           "password": "Password"
         }
       },
-      "reauth_confirm": {
-        "title": "Re-authenticate Mitipi Kevin",
-        "description": "Your Kevin API credentials are no longer valid. Enter your email and password again.",
-        "data": {
-          "email": "Email",
-          "password": "Password"
-        }
+      "auth": {
+        "title": "Sign in with Mitipi",
+        "description": "A new browser tab opens the Mitipi sign-in page. Sign in there with Google, Apple or your email; the tab returns here on its own."
       }
+    },
+    "progress": {
+      "auth": "Finish signing in on the Mitipi page that opened in a new tab."
     },
     "error": {
       "invalid_auth": "Invalid email or password.",
@@ -25,7 +40,23 @@
     },
     "abort": {
       "already_configured": "This account is already configured.",
-      "reauth_successful": "Re-authentication succeeded."
+      "reauth_successful": "Re-authentication succeeded.",
+      "wrong_account": "You signed in with a different KEVIN® account than the one this entry belongs to. Sign in with the original account, or add the other account as a new entry.",
+      "no_sign_in_method": "Signing in from Home Assistant is turned off for KEVIN® accounts right now. Try again later or contact Mitipi support.",
+      "my_home_assistant_required": "Sign in with Mitipi needs the My Home Assistant integration (`my:` in configuration.yaml, part of `default_config`). Enable it and restart, or sign in with email and password.",
+      "cannot_connect": "Could not reach the Kevin API. Try again later.",
+      "unknown": "Unexpected error. Check the logs.",
+      "oauth_error": "The Mitipi sign-in returned an unexpected answer. Try again.",
+      "oauth_failed": "Could not finish signing in with Mitipi. Try again.",
+      "oauth_timeout": "Signing in with Mitipi timed out. Try again.",
+      "oauth_unauthorized": "The Mitipi sign-in was not accepted. Try again, or contact Mitipi support if it keeps happening.",
+      "authorize_url_timeout": "Timed out preparing the Mitipi sign-in page.",
+      "no_url_available": "Home Assistant has no URL for the sign-in to return to. See {docs_url}.",
+      "user_rejected_authorize": "Signing in was cancelled: {error}.",
+      "missing_configuration": "Sign in with Mitipi is not available in this release."
+    },
+    "create_entry": {
+      "default": "Connected to your KEVIN® account."
     }
   },
   "entity": {

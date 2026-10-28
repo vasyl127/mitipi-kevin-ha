@@ -16,6 +16,13 @@ CONF_BASE_URL = "base_url"
 CONF_EMAIL = "email"
 CONF_PASSWORD = "password"
 
+# How an entry signs in. Absent on e-mail/password entries (the original format).
+CONF_AUTH_METHOD = "auth_method"
+AUTH_METHOD_OAUTH = "oauth"
+CONF_TOKEN = "token"
+# Public OAuth client id the Kevin API knows for "Sign in with Mitipi" (PKCE, no secret).
+OAUTH_CLIENT_ID = "mitipi-kevin-home-assistant"
+
 HEADER_ID_TOKEN = "x-auth0-id-token"
 HEADER_IDEMPOTENCY = "Idempotency-Key"
 # Names this integration release to the Kevin API (shown in the admin panel).

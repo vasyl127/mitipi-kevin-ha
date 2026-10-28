@@ -14,11 +14,19 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_EMAIL, CONF_PASSWORD, INTEGRATION_VERSION
+from .const import (
+    AUTH_METHOD_OAUTH,
+    CONF_AUTH_METHOD,
+    CONF_EMAIL,
+    CONF_PASSWORD,
+    CONF_TOKEN,
+    INTEGRATION_VERSION,
+)
 from .coordinator import KevinDeviceSnapshot, MitipiKevinCoordinator
 from .environment import ENVIRONMENT, KEVIN_API_BASE_URL
 
-TO_REDACT = {CONF_EMAIL, CONF_PASSWORD, "title", "unique_id"}
+# `token` holds the Auth0 access, ID and refresh tokens of Sign in with Mitipi entries.
+TO_REDACT = {CONF_EMAIL, CONF_PASSWORD, CONF_TOKEN, "title", "unique_id"}
 
 # Subscription fields that describe the plan, not the person or the payment.
 _SUBSCRIPTION_FIELDS = (
@@ -58,6 +66,11 @@ async def async_get_config_entry_diagnostics(
             "version": INTEGRATION_VERSION,
             "environment": ENVIRONMENT,
             "api_base_url": KEVIN_API_BASE_URL,
+            "sign_in_method": (
+                "mitipi"
+                if entry.data.get(CONF_AUTH_METHOD) == AUTH_METHOD_OAUTH
+                else "email_password"
+            ),
         },
         "entry": async_redact_data(
             {
