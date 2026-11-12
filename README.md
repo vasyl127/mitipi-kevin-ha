@@ -155,7 +155,7 @@ node --check custom_components/mitipi_kevin/www/kevin-presence-card.js
 
 Install only one of the two pytest plugins: they provide the same fixtures.
 
-**Home Assistant compatibility:** tested against Home Assistant **2024.12.5** and **2026.11.1** (minimum declared in `hacs.json`: **2024.4.0**).
+**Home Assistant compatibility:** tested against Home Assistant **2024.12.5** and **2026.11.1** (minimum declared in `hacs.json`: **2024.11.0**, the first release with the config flow helpers Sign in with Mitipi uses).
 
 ## License
 

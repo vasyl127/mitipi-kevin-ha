@@ -1,7 +1,5 @@
 {
   "name": "Mitipi Kevin (Stage)",
   "content_in_root": false,
-  "filename": "mitipi_kevin",
-  "homeassistant": "2024.4.0",
-  "render_readme": true
+  "homeassistant": "2024.11.0"
 }
