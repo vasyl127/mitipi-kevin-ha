@@ -1,8 +1,11 @@
-"""Point the HACS update entity at this integration's local brand icon on HA 2026.3+.
+"""Point the HACS update entity at this integration's local brand icon on HA 2026.3 to 2026.10.
 
 HACS still sets entity_picture to the legacy brands CDN, which has no entry for custom
 integrations. homeassistant.customize is used instead so the Updates UI shows our shipped
 icon without waiting for https://github.com/hacs/integration/issues/5171.
+
+From Home Assistant 2026.11 the built-in Marketplace replaces HACS, and its update entity
+already returns /api/brands/integration/<domain>/icon.png, so nothing is overridden there.
 """
 
 from __future__ import annotations
@@ -15,6 +18,8 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_values import EntityValues
 
 from .const import DOMAIN
+from .environment import GITHUB_REPOSITORY
+from .stores import get_hacs, marketplace_loaded
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -35,12 +40,12 @@ def local_brands_proxy_supported() -> bool:
 
 
 def _hacs_update_entity_id(hass: HomeAssistant) -> str | None:
-    hacs = hass.data.get("hacs")
+    if marketplace_loaded(hass):
+        return None
+    hacs = get_hacs(hass)
     if hacs is None:
         return None
     try:
-        from .update_check import GITHUB_REPOSITORY
-
         repository = hacs.repositories.get_by_full_name(GITHUB_REPOSITORY)
     except Exception:  # noqa: BLE001 — HACS internals vary by version
         return None

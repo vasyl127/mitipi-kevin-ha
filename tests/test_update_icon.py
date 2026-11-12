@@ -1,19 +1,21 @@
-"""HACS update entity icon override for Home Assistant 2026.3+ local brands."""
+"""HACS update entity icon override for Home Assistant 2026.3 to 2026.10 local brands."""
 
 from __future__ import annotations
 
 from types import SimpleNamespace
 
 import pytest
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core_config import DATA_CUSTOMIZE as HA_DATA_CUSTOMIZE
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_component import DATA_INSTANCES
 from homeassistant.helpers.entity_values import EntityValues
 from homeassistant.setup import async_setup_component
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mitipi_kevin.const import DOMAIN
-from custom_components.mitipi_kevin.update_check import GITHUB_REPOSITORY
+from custom_components.mitipi_kevin.environment import GITHUB_REPOSITORY
 from custom_components.mitipi_kevin.update_icon import (
     DATA_CUSTOMIZE,
     async_fix_hacs_update_icon,
@@ -144,3 +146,17 @@ async def test_uses_repository_id_as_hacs_unique_id(hass, enable_local_brands) -
     assert await async_fix_hacs_update_icon(hass) is True
     assert hass.data[DATA_CUSTOMIZE].get(entity_id)["entity_picture"] == LOCAL_ENTITY_PICTURE
     assert GITHUB_REPOSITORY.count("/") == 1
+
+
+async def test_no_op_when_marketplace_replaced_hacs(hass, enable_local_brands) -> None:
+    """On 2026.11 the Marketplace update entity already uses the local brand icon."""
+    entry = MockConfigEntry(domain="marketplace", title="Marketplace")
+    entry.add_to_hass(hass)
+    entry.mock_state(hass, ConfigEntryState.LOADED)
+    entry.runtime_data = _FakeHacs(_FakeRepository())
+    hass.data["hacs"] = _FakeHacs(_FakeRepository())
+    _register_hacs_update_entity(hass)
+    assert await async_fix_hacs_update_icon(hass) is False
+    assert DATA_CUSTOMIZE not in hass.data or not hass.data[DATA_CUSTOMIZE].get(
+        er.async_get(hass).async_get_entity_id("update", "hacs", str(REPO_ID))
+    ).get("entity_picture")
