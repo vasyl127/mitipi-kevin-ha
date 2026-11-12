@@ -10,7 +10,6 @@ from homeassistant.components import switch
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mitipi_kevin.api import KevinApiClient, KevinAuthError
 from custom_components.mitipi_kevin.const import CONF_EMAIL, CONF_PASSWORD, DOMAIN
@@ -24,6 +23,7 @@ from tests.conftest import (
     assert_allowed_kevin_paths,
     summary_payload,
 )
+from tests.ha_common import MockConfigEntry
 
 
 async def _setup_entry(hass: HomeAssistant, kevin_stub: KevinApiStub) -> MockConfigEntry:

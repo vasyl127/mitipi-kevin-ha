@@ -86,7 +86,7 @@
         },
         "characteristics": {
           "name": "Lifestyle",
-          "description": "Toggles for the environment, for example {\"kids\": true, \"dogs\": false}."
+          "description": "Toggles for the environment, for example kids on and dogs off (see the example)."
         },
         "occupancy_level": {
           "name": "Occupancy",

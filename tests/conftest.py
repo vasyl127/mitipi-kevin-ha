@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import re
 from collections.abc import Callable
 from typing import Any
@@ -10,13 +11,47 @@ from urllib.parse import urlparse
 import pytest
 from aioresponses import CallbackResult, aioresponses
 
-pytest_plugins = "pytest_homeassistant_custom_component"
+# Home Assistant 2026.11 ships its own pytest plugin (pytest-homeassistant), which loads
+# itself; older releases are tested with pytest-homeassistant-custom-component.
+if importlib.util.find_spec("pytest_homeassistant") is None:
+    pytest_plugins = "pytest_homeassistant_custom_component"
+
+
+def _let_aioresponses_build_responses_on_new_aiohttp() -> None:
+    """aioresponses 0.7.9 builds ClientResponse without `stream_writer`, which aiohttp 3.14
+    (Home Assistant 2026.11) requires. Supply a stub for already-sent requests until
+    aioresponses supports it (https://github.com/pnuckowski/aioresponses/pull/299)."""
+    import inspect
+    from unittest.mock import Mock
+
+    import aioresponses.core as aioresponses_core
+    from aiohttp import ClientResponse
+
+    if "stream_writer" not in inspect.signature(ClientResponse.__init__).parameters:
+        return
+
+    class _ClientResponse(ClientResponse):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            kwargs.setdefault("stream_writer", Mock(output_size=0))
+            super().__init__(*args, **kwargs)
+
+    aioresponses_core.ClientResponse = _ClientResponse
+
+
+_let_aioresponses_build_responses_on_new_aiohttp()
 
 
 @pytest.fixture(scope="session", autouse=True)
 def prime_aiohttp_resolver_thread() -> None:
-    """Start aiohttp/pycares shutdown thread once so HA verify_cleanup stays stable."""
+    """Start aiohttp/pycares shutdown thread once so HA verify_cleanup stays stable.
+
+    pytest-homeassistant (Home Assistant 2026.11+) blocks sockets in every test and
+    does not need this.
+    """
     import asyncio
+
+    if importlib.util.find_spec("pytest_homeassistant") is not None:
+        return
 
     import aiohttp
 

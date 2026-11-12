@@ -16,7 +16,6 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers.config_entry_oauth2_flow import MY_AUTH_CALLBACK_PATH
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mitipi_kevin.const import (
     AUTH_METHOD_OAUTH,
@@ -35,6 +34,7 @@ from tests.conftest import (
     KevinApiStub,
     assert_allowed_kevin_paths,
 )
+from tests.ha_common import MockConfigEntry
 
 TOKEN_URL = f"{TEST_BASE_URL}/v1/auth/ha/token"
 

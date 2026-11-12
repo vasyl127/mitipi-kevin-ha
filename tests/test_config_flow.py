@@ -11,7 +11,6 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mitipi_kevin.const import CONF_BASE_URL, CONF_EMAIL, CONF_PASSWORD, DOMAIN
 from tests.conftest import (
@@ -20,6 +19,7 @@ from tests.conftest import (
     TEST_PASSWORD,
     KevinApiStub,
 )
+from tests.ha_common import MockConfigEntry
 
 
 async def test_setup_never_shows_a_password_form(hass: HomeAssistant) -> None:

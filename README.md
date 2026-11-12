@@ -125,16 +125,22 @@ Mode changes are not optimistic: the card shows a pending state until the switch
 
 ## Development
 
-Requires Python 3.12+.
+CI runs the suite against Home Assistant **2024.12.5** (Python 3.12, `pytest-homeassistant-custom-component`) and **2026.11.1** (Python 3.14, `pytest-homeassistant`, the test plugin shipped with core from 2026.11), plus HACS validation and [hassfest](https://developers.home-assistant.io/blog/2020/04/16/hassfest/).
 
 ```bash
-pip install "homeassistant==2024.12.5" pytest pytest-asyncio pytest-homeassistant-custom-component ruff aioresponses
+# Home Assistant 2026.11
+uv pip install "homeassistant==2026.11.1" "pytest-homeassistant==2026.11.1" ruff aioresponses
+# or Home Assistant 2024.12
+pip install "homeassistant==2024.12.5" pytest pytest-asyncio "pytest-homeassistant-custom-component==0.13.195" ruff aioresponses
+
 ruff check .
 pytest
 node --check custom_components/mitipi_kevin/www/kevin-presence-card.js
 ```
 
-**Home Assistant compatibility:** developed and tested against Home Assistant **2024.12.5** (minimum declared in `hacs.json`: **2024.4.0**).
+Install only one of the two pytest plugins: they provide the same fixtures.
+
+**Home Assistant compatibility:** tested against Home Assistant **2024.12.5** and **2026.11.1** (minimum declared in `hacs.json`: **2024.4.0**).
 
 ## License
 

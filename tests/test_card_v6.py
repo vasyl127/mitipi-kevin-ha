@@ -10,7 +10,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mitipi_kevin.card_helpers import (
     activity_from_state,
@@ -28,6 +27,7 @@ from tests.conftest import (
     assert_allowed_kevin_paths,
     summary_payload,
 )
+from tests.ha_common import MockConfigEntry
 
 SCHEDULES = [
     {
@@ -277,6 +277,10 @@ async def test_device_named_after_account_device_name(
     hass: HomeAssistant, kevin_stub: KevinApiStub
 ) -> None:
     await _setup(hass, kevin_stub)
-    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, DEVICE_ONE["id"])})
+    # Looked up through the power switch: async_get_device(identifiers=...) and
+    # mapping access to the device registry are deprecated in Home Assistant 2026.11.
+    power = er.async_get(hass).async_get(_entity(hass, "switch", f"{DEVICE_ONE['id']}_power"))
+    device = dr.async_get(hass).async_get(power.device_id)
+    assert (DOMAIN, DEVICE_ONE["id"]) in device.identifiers
     assert device.name == "Living room"
     assert device.serial_number == "K-DEVICEONE"

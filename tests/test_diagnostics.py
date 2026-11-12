@@ -6,7 +6,6 @@ import json
 
 from aioresponses import aioresponses
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mitipi_kevin.const import (
     CONF_EMAIL,
@@ -23,6 +22,7 @@ from tests.conftest import (
     TEST_PASSWORD,
     KevinApiStub,
 )
+from tests.ha_common import MockConfigEntry
 
 
 async def _setup(hass: HomeAssistant, kevin_stub: KevinApiStub) -> MockConfigEntry:

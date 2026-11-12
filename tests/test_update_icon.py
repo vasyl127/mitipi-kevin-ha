@@ -12,7 +12,6 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_component import DATA_INSTANCES
 from homeassistant.helpers.entity_values import EntityValues
 from homeassistant.setup import async_setup_component
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mitipi_kevin.const import DOMAIN
 from custom_components.mitipi_kevin.environment import GITHUB_REPOSITORY
@@ -21,6 +20,7 @@ from custom_components.mitipi_kevin.update_icon import (
     async_fix_hacs_update_icon,
     local_brands_proxy_supported,
 )
+from tests.ha_common import MockConfigEntry
 
 LOCAL_ENTITY_PICTURE = f"/api/brands/integration/{DOMAIN}/icon.png"
 REPO_ID = 987654321
@@ -72,8 +72,11 @@ def test_customize_key_matches_home_assistant() -> None:
     assert DATA_CUSTOMIZE == HA_DATA_CUSTOMIZE
 
 
-async def test_no_op_when_local_brands_unsupported(hass) -> None:
-    assert local_brands_proxy_supported() is False
+async def test_no_op_when_local_brands_unsupported(hass, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "custom_components.mitipi_kevin.update_icon.local_brands_proxy_supported",
+        lambda: False,
+    )
     hass.data["hacs"] = _FakeHacs(_FakeRepository())
     _register_hacs_update_entity(hass)
     assert await async_fix_hacs_update_icon(hass) is False
@@ -160,3 +163,9 @@ async def test_no_op_when_marketplace_replaced_hacs(hass, enable_local_brands) -
     assert DATA_CUSTOMIZE not in hass.data or not hass.data[DATA_CUSTOMIZE].get(
         er.async_get(hass).async_get_entity_id("update", "hacs", str(REPO_ID))
     ).get("entity_picture")
+
+
+def test_local_brands_detection_matches_the_running_release() -> None:
+    from homeassistant.const import MAJOR_VERSION, MINOR_VERSION
+
+    assert local_brands_proxy_supported() is ((MAJOR_VERSION, MINOR_VERSION) >= (2026, 3))

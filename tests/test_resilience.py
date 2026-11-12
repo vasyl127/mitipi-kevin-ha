@@ -8,7 +8,6 @@ from unittest.mock import patch
 from aioresponses import aioresponses
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mitipi_kevin.const import (
     CONF_EMAIL,
@@ -18,6 +17,7 @@ from custom_components.mitipi_kevin.const import (
 )
 from custom_components.mitipi_kevin.device_snapshot_helpers import last_seen_from_metadata
 from tests.conftest import DEVICE_ONE, TEST_EMAIL, TEST_PASSWORD, KevinApiStub, summary_payload
+from tests.ha_common import MockConfigEntry
 
 LAST_SEEN = 1792000000  # epoch seconds (October 2026)
 

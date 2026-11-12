@@ -8,7 +8,6 @@ from aioresponses import aioresponses
 from homeassistant.components import button, select
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mitipi_kevin.const import CONF_EMAIL, CONF_PASSWORD, DOMAIN
 from tests.conftest import (
@@ -19,6 +18,7 @@ from tests.conftest import (
     scenes_payload,
     summary_payload,
 )
+from tests.ha_common import MockConfigEntry
 
 
 async def _setup_one_device(hass: HomeAssistant, kevin_stub: KevinApiStub) -> MockConfigEntry:

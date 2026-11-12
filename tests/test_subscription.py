@@ -7,7 +7,6 @@ from aioresponses import aioresponses
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mitipi_kevin.api import KevinApiClient, KevinAuthError
 from custom_components.mitipi_kevin.const import CONF_EMAIL, CONF_PASSWORD, DOMAIN
@@ -23,6 +22,7 @@ from tests.conftest import (
     TEST_PASSWORD,
     KevinApiStub,
 )
+from tests.ha_common import MockConfigEntry
 
 
 def test_parse_trialing_subscription() -> None:

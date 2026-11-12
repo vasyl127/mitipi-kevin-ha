@@ -9,7 +9,6 @@ from aioresponses import aioresponses
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mitipi_kevin.const import DOMAIN, INTEGRATION_VERSION
 from custom_components.mitipi_kevin.update_check import (
@@ -20,6 +19,7 @@ from custom_components.mitipi_kevin.update_check import (
     is_newer,
     parse_version,
 )
+from tests.ha_common import MockConfigEntry
 
 
 def test_version_parsing_and_comparison() -> None:

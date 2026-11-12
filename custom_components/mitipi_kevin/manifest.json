@@ -1,6 +1,13 @@
 {
   "domain": "mitipi_kevin",
   "name": "Mitipi Kevin (Stage)",
+  "after_dependencies": [
+    "frontend",
+    "http"
+  ],
+  "categories": [
+    "security_safety"
+  ],
   "codeowners": [
     "@vasyl127"
   ],
