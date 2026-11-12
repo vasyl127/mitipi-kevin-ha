@@ -1,10 +1,11 @@
 """Make new releases of this integration show up in Home Assistant without manual steps.
 
-HACS re-reads custom (non-default) repositories only every 48 hours, counted from
-Home Assistant's start, so frequent restarts mean it never notices a new release.
-This module checks the latest GitHub release itself and, when it is newer than the
-installed version, asks HACS to refresh this repository so its update entity appears
-under Settings → Updates. If HACS cannot be reached, a Repairs issue links to the
+The Marketplace (Home Assistant 2026.11+) and HACS (2026.10 and older) re-read a repository
+added from a link only every 48 hours, so a new release can stay invisible for days. This
+module checks the latest GitHub release itself and, when it is newer than the installed
+version, asks the store that installed the integration to refresh this repository, so its
+update entity appears under Settings → Updates. The Marketplace is preferred: on 2026.11
+HACS is removed. If neither store tracks the repository, a Repairs issue links to the
 release instead.
 """
 
@@ -24,6 +25,7 @@ from homeassistant.helpers.event import async_call_later, async_track_time_inter
 
 from .const import DOMAIN, INTEGRATION_VERSION
 from .environment import GITHUB_REPOSITORY
+from .stores import async_refresh_repository, get_hacs, get_marketplace
 from .update_icon import async_fix_hacs_update_icon
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,7 +33,7 @@ _LOGGER = logging.getLogger(__name__)
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/releases/latest"
 RELEASES_URL = f"https://github.com/{GITHUB_REPOSITORY}/releases"
 CHECK_INTERVAL = timedelta(hours=6)
-FIRST_CHECK_DELAY = 120  # seconds; give HACS time to finish its own startup
+FIRST_CHECK_DELAY = 120  # seconds; give the Marketplace or HACS time to finish starting
 ISSUE_ID = "update_available"
 _DATA_KEY = f"{DOMAIN}_update_check"
 
@@ -75,33 +77,27 @@ async def async_fetch_latest_tag(hass: HomeAssistant) -> str | None:
     return tag if isinstance(tag, str) else None
 
 
-async def async_refresh_hacs(hass: HomeAssistant) -> bool:
-    """Ask HACS to re-read this repository now. False when HACS is absent or not tracking it.
+async def async_refresh_store(hass: HomeAssistant) -> str | None:
+    """Ask the store that installed this integration to re-read the repository now.
 
-    Uses the same calls as HACS's own "Update information" button. HACS has no public
-    API for this, so every failure is caught and reported as False.
+    Returns `marketplace` or `hacs` for the store that refreshed it, None when no store
+    tracks this repository (manual install) or the refresh failed.
     """
-    hacs = hass.data.get("hacs")
-    if hacs is None:
-        return False
-    try:
-        repository = hacs.repositories.get_by_full_name(GITHUB_REPOSITORY)
-        if repository is None or not repository.data.installed:
-            return False
-        await repository.update_repository(ignore_issues=True, force=True)
-        await hacs.data.async_write()
-        coordinator = getattr(hacs, "coordinators", {}).get(repository.data.category)
-        if coordinator is not None:
-            coordinator.async_update_listeners()
+    marketplace = get_marketplace(hass)
+    if marketplace is not None and await async_refresh_repository(marketplace):
+        return "marketplace"
+    hacs = get_hacs(hass)
+    if hacs is not None and await async_refresh_repository(hacs):
         await async_fix_hacs_update_icon(hass)
-    except Exception:  # noqa: BLE001 — HACS internals may change between versions
-        _LOGGER.debug("Could not refresh the HACS repository", exc_info=True)
-        return False
-    return True
+        return "hacs"
+    return None
 
 
 async def async_check_for_update(hass: HomeAssistant) -> str:
-    """Run one check. Returns `current`, `hacs`, `repair` or `unknown` (GitHub unreachable)."""
+    """Run one check.
+
+    Returns `current`, `marketplace`, `hacs`, `repair` or `unknown` (GitHub unreachable).
+    """
     await async_fix_hacs_update_icon(hass)
     latest = await async_fetch_latest_tag(hass)
     if latest is None:
@@ -109,10 +105,10 @@ async def async_check_for_update(hass: HomeAssistant) -> str:
     if not is_newer(latest):
         ir.async_delete_issue(hass, DOMAIN, ISSUE_ID)
         return "current"
-    if await async_refresh_hacs(hass):
+    if store := await async_refresh_store(hass):
         ir.async_delete_issue(hass, DOMAIN, ISSUE_ID)
-        _LOGGER.info("Mitipi Kevin %s is available; HACS refreshed", latest)
-        return "hacs"
+        _LOGGER.info("Mitipi Kevin %s is available; %s refreshed", latest, store)
+        return store
     ir.async_create_issue(
         hass,
         DOMAIN,
