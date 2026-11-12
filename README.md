@@ -1,18 +1,33 @@
 <p align="center"><img src="docs/assets/logo.png" alt="Mitipi Kevin" width="128" height="128"></p>
 
-# Mitipi Kevin for Home Assistant (HACS)
+# Mitipi Kevin for Home Assistant
 
 > **Stage build.** This repository talks to the **stage** Kevin API (`https://stage-mitipi-api.teamvoy.com/api`) and is meant for testing. The production integration is [teamvoydev/mitipi-kevin](https://github.com/teamvoydev/mitipi-kevin).
 
 Production-oriented custom integration that connects Home Assistant to **Mitipi Kevin** through the Kevin HTTP API only. Home Assistant never talks to Auth0, Cognito, AWS Lambda, MQTT, or legacy AWS routes directly—credentials are exchanged once with `POST /v1/auth/login`, and all device traffic uses Bearer + `x-auth0-id-token` headers on Kevin API paths.
 
-## HACS installation
+<!-- ha-marketplace:exclude-start -->
+## Installation
+
+[![Open your Home Assistant instance and open this repository in the Marketplace.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=vasyl127&repository=mitipi-kevin-ha&category=integration)
+
+The button opens this repository in the Marketplace on Home Assistant 2026.11 and later, and in HACS on older releases. It offers to add the repository first if it is not added yet.
+
+### Home Assistant 2026.11 and later (Marketplace)
+
+1. Go to **Settings → Marketplace**, select **Add from link** in the upper-right corner and enter `https://github.com/vasyl127/mitipi-kevin-ha`. The Marketplace asks you to connect GitHub the first time you add a repository.
+2. Open **Mitipi Kevin (Stage)** in the list and select **Install**. The integration setup opens when the installation is complete.
+
+### Home Assistant 2026.10 and older (HACS)
 
 1. In HACS → **Custom repositories**, add `https://github.com/vasyl127/mitipi-kevin-ha` as category **Integration**.
 2. Install **Mitipi Kevin (Stage)** and restart Home Assistant.
 3. Go to **Settings → Devices & services → Add integration** and search for **Mitipi Kevin**.
 
+Updating to Home Assistant 2026.11 moves the integration from HACS to the Marketplace automatically; it keeps its update entity and keeps getting updates.
+
 Alternatively, copy `custom_components/mitipi_kevin` into your Home Assistant `config/custom_components/` directory and restart.
+<!-- ha-marketplace:exclude-end -->
 
 ## Updates
 
@@ -30,9 +45,9 @@ Entries created with e-mail and password by releases before v0.7.0 keep working 
 
 ## Upgrading, downgrading and removal
 
-- **Upgrade:** install the new release from **Settings → Updates** (or HACS) and restart Home Assistant. Entity IDs and `unique_id`s stay the same across releases, so dashboards and automations keep working.
-- **Downgrade:** in HACS open **Mitipi Kevin → ⋮ → Redownload**, pick the earlier version and restart. E-mail and password entries work with every published release (v0.2.0 and later), so no re-setup is needed. Entries created with **Sign in with Mitipi** need v0.7.0 or later; after downgrading below it, remove them and add the account again with e-mail and password.
-- **Removal:** delete the integration under **Settings → Devices & services**, then remove it in HACS and restart. Removing the entry deletes its devices and entities from Home Assistant; nothing changes on the Kevin devices or in the Mitipi account.
+- **Upgrade:** install the new release from **Settings → Updates** (or from the repository page in the Marketplace, or HACS before 2026.11) and restart Home Assistant if asked. Entity IDs and `unique_id`s stay the same across releases, so dashboards and automations keep working.
+- **Downgrade:** restore a Home Assistant backup made before the update. That is what the Marketplace recommends; its **⋮ → Install another version** is meant for picking a release that fits an older Home Assistant, not for going back. Before 2026.11, HACS offers **Mitipi Kevin → ⋮ → Redownload** with a version list. E-mail and password entries work with every published release (v0.2.0 and later), so no re-setup is needed. Entries created with **Sign in with Mitipi** need v0.7.0 or later; after downgrading below it, remove them and add the account again with e-mail and password.
+- **Removal:** delete the integration under **Settings → Devices & services** first (the Marketplace refuses to uninstall an integration that is still configured), then open the repository in **Settings → Marketplace → ⋮ → Uninstall** (or remove it in HACS before 2026.11) and restart. Removing the entry deletes its devices and entities from Home Assistant; nothing changes on the Kevin devices or in the Mitipi account.
 
 ## Diagnostics
 
@@ -116,7 +131,7 @@ Mode changes are not optimistic: the card shows a pending state until the switch
 
 ### Icons
 
-- `custom_components/mitipi_kevin/brand/` holds the integration icon and logo shown by Home Assistant and HACS (`icon.png`, `icon@2x.png`, `logo.png`, `logo@2x.png`). They are cut out of the product photo.
+- `custom_components/mitipi_kevin/brand/` holds the integration icon and logo shown by Home Assistant, the Marketplace and HACS (`icon.png`, `icon@2x.png`, `logo.png`, `logo@2x.png`). They are cut out of the product photo.
 - `docs/assets/icons/` holds the full icon set from the design:
   - `kevin-mono.svg`: the one-path glyph traced from the photo, drawn in `currentColor`. The card header and the tile use it.
   - `kevin-color.svg`: a flat two-tone version of the traced outline.
