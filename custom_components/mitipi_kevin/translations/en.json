@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "reauth_confirm": {
-        "title": "Sign in to Mitipi Kevin again",
+        "title": "Sign in to KEVIN® again",
         "description": "Home Assistant is no longer signed in to your KEVIN® account. Select **Submit** to open the Mitipi sign-in page and sign in with Google, Apple or your email to keep your devices and automations working."
       },
       "auth": {
@@ -101,8 +101,8 @@
   },
   "issues": {
     "update_available": {
-      "title": "Mitipi Kevin {latest} is available",
-      "description": "You have Mitipi Kevin {installed}. Version {latest} is out, but HACS could not be asked to show it. Open HACS, choose Mitipi Kevin → Update information, then install the update and restart Home Assistant."
+      "title": "KEVIN® {latest} is available",
+      "description": "You have KEVIN® {installed}. Version {latest} is out, but HACS could not be asked to show it. Open HACS, choose KEVIN® → Update information, then install the update and restart Home Assistant."
     }
   }
 }

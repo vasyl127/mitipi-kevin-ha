@@ -1,4 +1,4 @@
-"""Data update coordinator for Mitipi Kevin devices."""
+"""Data update coordinator for KEVIN devices."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Select platform for Mitipi Kevin scenes."""
+"""Select platform for KEVIN scenes."""
 
 from __future__ import annotations
 

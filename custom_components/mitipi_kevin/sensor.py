@@ -1,4 +1,4 @@
-"""Sensor platform for Mitipi Kevin."""
+"""Sensor platform for KEVIN."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""The Mitipi Kevin integration."""
+"""The KEVIN integration."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: MitipiKevinConfigEntry) -> bool:
-    """Set up Mitipi Kevin from a config entry."""
+    """Set up KEVIN from a config entry."""
     await async_register_card(hass)
     client = build_client_from_entry(hass, entry)
     coordinator = MitipiKevinCoordinator(hass, client, entry)

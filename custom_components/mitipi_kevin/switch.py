@@ -1,4 +1,4 @@
-"""Switch platform for Mitipi Kevin."""
+"""Switch platform for KEVIN."""
 
 from __future__ import annotations
 

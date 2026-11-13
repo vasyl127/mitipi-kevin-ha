@@ -1,6 +1,6 @@
 {
   "domain": "mitipi_kevin",
-  "name": "Mitipi Kevin (Stage)",
+  "name": "KEVIN® (Stage)",
   "after_dependencies": [
     "frontend",
     "http"

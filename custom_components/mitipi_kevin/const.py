@@ -1,4 +1,4 @@
-"""Constants for the Mitipi Kevin integration."""
+"""Constants for the KEVIN integration."""
 
 from datetime import timedelta
 

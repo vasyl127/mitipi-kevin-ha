@@ -1,4 +1,4 @@
-"""Config flow for Mitipi Kevin.
+"""Config flow for KEVIN.
 
 Signing in always goes through **Sign in with Mitipi**: a browser tab with the Mitipi
 sign-in page (Google, Apple or e-mail and password). Home Assistant stores the user's
@@ -34,7 +34,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class MitipiKevinConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, domain=DOMAIN):
-    """Handle a config flow for Mitipi Kevin."""
+    """Handle a config flow for KEVIN."""
 
     DOMAIN = DOMAIN
     VERSION = 2

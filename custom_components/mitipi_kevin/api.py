@@ -65,7 +65,7 @@ class TokenProvider(Protocol):
 
 
 class KevinApiClient:
-    """HTTP client for the Mitipi Kevin API."""
+    """HTTP client for the KEVIN API."""
 
     def __init__(
         self,

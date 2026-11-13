@@ -1,4 +1,4 @@
-"""Diagnostics for Mitipi Kevin (Settings -> Devices & services -> Download diagnostics).
+"""Diagnostics for KEVIN (Settings -> Devices & services -> Download diagnostics).
 
 The download is meant to be attached to a support ticket, so it carries what helps
 to explain a problem (versions, API target, poll health, per-device state) and

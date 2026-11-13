@@ -1,7 +1,7 @@
 [project]
 name = "mitipi-kevin-ha"
 version = "0.1.0"
-description = "Home Assistant custom integration for Mitipi Kevin"
+description = "Home Assistant custom integration for KEVIN®"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []

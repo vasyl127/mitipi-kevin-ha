@@ -1,4 +1,4 @@
-"""Binary sensor platform for Mitipi Kevin."""
+"""Binary sensor platform for KEVIN."""
 
 from __future__ import annotations
 

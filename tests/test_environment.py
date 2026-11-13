@@ -17,12 +17,12 @@ TARGETS = {
     "stage": {
         "api": "https://stage-mitipi-api.teamvoy.com/api",
         "repository": "vasyl127/mitipi-kevin-ha",
-        "name": "Mitipi Kevin (Stage)",
+        "name": "KEVIN® (Stage)",
     },
     "production": {
         "api": "https://mitipi-api.teamvoy.com/api",
-        "repository": "teamvoydev/mitipi-kevin",
-        "name": "Mitipi Kevin",
+        "repository": "kevin-mitipi/KEVIN",
+        "name": "KEVIN®",
     },
 }
 

@@ -3,7 +3,7 @@
 The integration ships from two repositories built from the same code:
 
 - github.com/vasyl127/mitipi-kevin-ha   -> stage Kevin API (testing)
-- github.com/teamvoydev/mitipi-kevin    -> production Kevin API
+- github.com/kevin-mitipi/KEVIN          -> production Kevin API
 
 The values below, the links in manifest.json and hacs.json, the HACS URL in README.md and
 the card's documentationURL are the only differences between them;

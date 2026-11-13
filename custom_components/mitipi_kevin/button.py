@@ -1,4 +1,4 @@
-"""Button platform for Mitipi Kevin."""
+"""Button platform for KEVIN."""
 
 from __future__ import annotations
 

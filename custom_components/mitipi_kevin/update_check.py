@@ -107,7 +107,7 @@ async def async_check_for_update(hass: HomeAssistant) -> str:
         return "current"
     if store := await async_refresh_store(hass):
         ir.async_delete_issue(hass, DOMAIN, ISSUE_ID)
-        _LOGGER.info("Mitipi Kevin %s is available; %s refreshed", latest, store)
+        _LOGGER.info("KEVIN %s is available; %s refreshed", latest, store)
         return store
     ir.async_create_issue(
         hass,
